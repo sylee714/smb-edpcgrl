@@ -88,26 +88,40 @@ class SMBProblem(Problem):
         return new_map
 
     def _run_game(self, map):
+        # Assign a char symbol to each tile
         gameCharacters=" # ## #"
         string_to_char = dict((s, gameCharacters[i]) for i, s in enumerate(self.get_tile_types()))
         lvlString = ""
+        # Convert the string map to a char map
         for i in range(len(map)):
+            # first 3 cols of rows 0-10 are empty
             if i < self._height - 3:
                 lvlString += "   "
+            # first 3 cols of row 11 are for the player tile
             elif i == self._height - 3:
                 lvlString += " @ "
+            # first 3 cols of rows 12-14 are solids
             else:
                 lvlString += "###"
+            # Go thru each entry in the map and copy and convert it
             for j in range(len(map[i])):
+                print(j)
                 string = map[i][j]
                 lvlString += string_to_char[string]
+            # last 3 cols of rows 0-10 are for the pole tiles
             if i < self._height - 3:
                 lvlString += " | "
+            # last 3 cols of row 11 are for the pole base
             elif i == self._height - 3:
                 lvlString += " # "
+            # first 3 cols of rows 12-14 are solids
             else:
                 lvlString += "###"
+            # add a new line
             lvlString += "\n"
+
+        # print(lvlString)
+        # print("Length of lvlString: ", len(lvlString))
 
         state = State()
         state.stringInitialize(lvlString.split("\n"))
