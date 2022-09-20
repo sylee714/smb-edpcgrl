@@ -4,12 +4,18 @@ import numpy as np
 from gym_pcgrl.envs.probs.problem import Problem
 from gym_pcgrl.envs.helper import get_range_reward, get_tile_locations, calc_certain_tile, get_floor_dist, get_type_grouping, get_changes
 from gym_pcgrl.envs.probs.smb.engine import State,BFSAgent,AStarAgent
-
+from gym_pcgrl.envs.probs.MarioLevelRepairer.CNet.model import CNet
+from gym_pcgrl.envs.probs.generator2 import Generator
+from gym_pcgrl.envs.probs.MarioLevelRepairer.GA.repairer import Repairer
+import random
+import time
+import subprocess
+rootpath = os.path.abspath(os.path.dirname(__file__)) + "/"
 
 class SMBProblem(Problem):
     def __init__(self):
         super().__init__()
-        self._width = 114
+        self._width = 140 # original = 114; the width does not include the left 3 cols and right 3 cols
         self._height = 14
         self._prob = {"empty":0.75, "solid":0.1, "enemy":0.01, "brick":0.04, "question":0.01, "coin":0.02, "tube": 0.02}
         self._border_size = (3, 0)
@@ -32,6 +38,133 @@ class SMBProblem(Problem):
             "dist-win": 5
         }
 
+        self.initial_state = None
+        self.nz = 32
+        self.generator = Generator(random.randint(1, 10000000))
+        self.repairer = Repairer(0) #passing in cuda_id=0 for only cpu
+
+    def sample_random_vector(self, size):
+        return np.clip(np.random.randn(size), -1, 1)
+
+    # Converts Mariopuzzle map tiles to PCGRL map tiles
+    # String Version
+    def convertMP2PCGRL_str(self, map):
+        for i in range(len(map)):
+            for j in range(len(map[i])):
+                if map[i][j] == 0:
+                    map[i][j] = "brick"
+                elif map[i][j] == 1:
+                    map[i][j] = "solid"
+                elif map[i][j] == 2:
+                    map[i][j] = "empty"
+                elif map[i][j] == 3:
+                    map[i][j] = "question"
+                elif map[i][j] == 4: 
+                    map[i][j] = "question"
+                elif map[i][j] == 5:
+                    map[i][j] = "enemy"
+                elif map[i][j] == 6:
+                    map[i][j] = "tube"
+                elif map[i][j] == 7:
+                    map[i][j] = "tube"
+                elif map[i][j] == 8:
+                    map[i][j] = "tube"
+                elif map[i][j] == 9:
+                    map[i][j] = "tube"
+                elif map[i][j] == 10:
+                    map[i][j] = "coin"
+                elif map[i][j] == 11:
+                    map[i][j] = "empty"
+                elif map[i][j] == 12:
+                    map[i][j] = "empty"
+
+    # Converts Mariopuzzle map tiles to PCGRL map tiles
+    # Numerical version
+    def convertMP2PCGRL_num(self, map):
+        for i in range(len(map)):
+            for j in range(len(map[i])):
+                if map[i][j] == 0:
+                    map[i][j] = 3
+                elif map[i][j] == 1:
+                    map[i][j] = 1
+                elif map[i][j] == 2:
+                    map[i][j] = 0
+                elif map[i][j] == 3:
+                    map[i][j] = 4
+                elif map[i][j] == 4: 
+                    map[i][j] = 4
+                elif map[i][j] == 5:
+                    map[i][j] = 2
+                elif map[i][j] == 6:
+                    map[i][j] = 6
+                elif map[i][j] == 7:
+                    map[i][j] = 6
+                elif map[i][j] == 8:
+                    map[i][j] = 6
+                elif map[i][j] == 9:
+                    map[i][j] = 6
+                elif map[i][j] == 10:
+                    map[i][j] = 5
+                elif map[i][j] == 11:
+                    map[i][j] = 0
+                elif map[i][j] == 12:
+                    map[i][j] = 0
+    
+    # Converts PCGRL map tiles to Mariopuzzle map tiles
+    # Numerical version
+    def convertPCGRL2MP_num(self, map):
+        pass
+
+    # This method saves the passed in level map using the Mariopuzzle symbols
+    def saveLevelAsText(self, level, path):
+        map={'X':0, 'S':1, '-':2, '?':3, 'Q':4, 'E':5,'<':6,'>':7,'[':8,']':9,'o':10,'B':11,'b':12}
+        map2=['X','S','-', '?', 'Q', 'E','<','>','[',']','o','B','b']
+        with open(path+".txt",'w') as f:
+            for i in range(len(level)):
+                str=''
+                for j in range(len(level[0])):
+                    str+=map2[level[i][j]]
+                f.write(str+'\n')
+
+    def readMarioAIResultFile(self, path):
+        f = open(path, "r")
+        return float(f.read())
+
+    def update_rep_map(self, map):
+        
+        playable = False
+        
+        # Keep generate the initial block till it's playable
+        while not playable:
+            if self.initial_state != None:
+                self.state = self.initial_state
+            else:
+                self.state = self.sample_random_vector(self.nz)
+
+            st = time.time()
+            piece = self.generator.generate(self.state)
+            st = time.time()
+            new_piece = self.repairer.repair(piece)
+
+            # print("rootpath: ", rootpath)
+            self.saveLevelAsText(new_piece, rootpath + "mario_current_map")
+            subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
+            completion_rate = self.readMarioAIResultFile(rootpath + "\mario_result.txt")
+            print("completion rate: ", completion_rate)
+            if completion_rate == 1.0:
+                playable = True
+            else:
+                pass
+
+        self.convertMP2PCGRL_num(new_piece)
+        print("Initial Block")
+        print(new_piece)
+        map[:, :28] = new_piece
+        # return map
+
+    def createMapFile(self, map):
+        pass
+
     def get_tile_types(self):
         return ["empty", "solid", "enemy", "brick", "question", "coin", "tube"]
 
@@ -50,15 +183,20 @@ class SMBProblem(Problem):
                     self._rewards[t] = rewards[t]
 
     def _get_runnable_lvl(self, map):
+        # size of map = 140 x 14 -> without 3 left/right cols for the player and the pole
+        # size of new map = 146 x 14
         new_map = []
 
         for y in range(len(map)):
             new_map.append([])
+            # This add 3 cols at the front
             for x in range(3):
                 if y < self._height - 2:
                     new_map[y].append("empty")
                 else:
                     new_map[y].append("solid")
+
+            # This distinguishes between solid and solid above & different parts of tube
             for x in range(len(map[y])):
                 value = map[y][x]
                 if map[y][x] == "solid" and y < self._height - 2:
@@ -71,6 +209,8 @@ class SMBProblem(Problem):
                     else:
                         value += "_right"
                 new_map[y].append(value)
+            
+            # This add 3 cols at the end
             for x in range(3):
                 if y < self._height - 2:
                     new_map[y].append("empty")
@@ -84,6 +224,14 @@ class SMBProblem(Problem):
         new_map[1][-2] = "pole_top"
         new_map[2][-2] = "pole_flag"
         new_map[2][-3] = "flag"
+
+        # print(len(map))
+        # print(len(map[0]))
+        # print(len(new_map))
+        # print(len(new_map[0]))
+
+        # print(map)
+        # print(new_map)
 
         return new_map
 
@@ -105,7 +253,7 @@ class SMBProblem(Problem):
                 lvlString += "###"
             # Go thru each entry in the map and copy and convert it
             for j in range(len(map[i])):
-                print(j)
+                # print(j)
                 string = map[i][j]
                 lvlString += string_to_char[string]
             # last 3 cols of rows 0-10 are for the pole tiles
@@ -181,6 +329,21 @@ class SMBProblem(Problem):
             rewards["jumps"] * self._rewards["jumps"] +\
             rewards["jumps-dist"] * self._rewards["jumps-dist"] +\
             rewards["dist-win"] * self._rewards["dist-win"]
+    
+    # def get_reward(self, iterations, action, new_stats, old_stats):
+    #     print("Iterations: ", iterations)
+
+    #     # Return a huge negative reward if an action if out of range
+    #     if iterations >= 0 or iterations <= 999:
+    #         pass
+    #     elif iterations >= 1000 or iterations <= 1999:
+    #         pass
+    #     elif iterations >= 2000 or iterations <= 2999:
+    #         pass
+    #     elif iterations >= 3000 or iterations <= 3999:
+    #         pass
+    #     elif iterations >= 4000 or iterations <= 4999:
+    #         pass
 
     def get_episode_over(self, new_stats, old_stats):
         return new_stats["dist-win"] <= 0
@@ -222,4 +385,5 @@ class SMBProblem(Problem):
         self._border_size = (0, 0)
         img = super().render(new_map)
         self._border_size = (3, 0)
+
         return img

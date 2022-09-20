@@ -25,6 +25,7 @@ class PcgrlEnv(gym.Env):
         constant in gym_pcgrl.envs.reps.__init__.py
     """
     def __init__(self, prob="binary", rep="narrow"):
+        self._prob_str = prob
         self._prob = PROBLEMS[prob]()
         self._rep = REPRESENTATIONS[rep]()
         self._rep_stats = None
@@ -64,9 +65,14 @@ class PcgrlEnv(gym.Env):
         the Observation Space
     """
     def reset(self):
+        # Initial map gets generated in Representation and it's stored in Rep
+        # So, update the initial map with the generated segment
+        
         self._changes = 0
         self._iteration = 0
         self._rep.reset(self._prob._width, self._prob._height, get_int_prob(self._prob._prob, self._prob.get_tile_types()))
+        if self._prob_str == "smb":
+            self._prob.update_rep_map(self._rep._map)
         self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
         self._prob.reset(self._rep_stats)
         self._heatmap = np.zeros((self._prob._height, self._prob._width))
@@ -131,7 +137,9 @@ class PcgrlEnv(gym.Env):
         #save copy of the old stats to calculate the reward
         old_stats = self._rep_stats
         # update the current state to the new state based on the taken action
+        # if self._prob_str == "smb":
         change, x, y = self._rep.update(action)
+        
         if change > 0:
             self._changes += change
             self._heatmap[y][x] += 1.0
@@ -139,7 +147,13 @@ class PcgrlEnv(gym.Env):
         # calculate the values
         observation = self._rep.get_observation()
         observation["heatmap"] = self._heatmap.copy()
+        # reward = None
+        # print(self._prob_str)
+        # if self._prob_str == "smb":
+        #     reward = self._prob.get_reward(self._iteration, self._rep_stats, old_stats)
+        # else:
         reward = self._prob.get_reward(self._rep_stats, old_stats)
+            
         done = self._prob.get_episode_over(self._rep_stats,old_stats) or self._changes >= self._max_changes or self._iteration >= self._max_iterations
         info = self._prob.get_debug_info(self._rep_stats,old_stats)
         info["iterations"] = self._iteration

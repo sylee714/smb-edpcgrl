@@ -72,6 +72,17 @@ class Problem:
                     self._prob[t] = prob[t]
 
     """
+    Update the map
+
+    Created to be used with "SMB" problem only for now
+
+    Returns:
+        map (numpy.int[][]): a numpy 2D array of the current map
+    """
+    def update_rep_map(self, map):
+        raise NotImplementedError('update_rep_map is not implemented')
+
+    """
     Get the current stats of the map
 
     Returns:
@@ -92,6 +103,9 @@ class Problem:
     """
     def get_reward(self, new_stats, old_stats):
         raise NotImplementedError('get_reward is not implemented')
+
+    # def get_reward(self, iterations, new_stats, old_stats):
+    #     raise NotImplementedError('get_reward is not implemented')
 
     """
     Uses the stats to check if the problem ended (episode_over) which means reached

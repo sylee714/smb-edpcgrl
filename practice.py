@@ -1,26 +1,28 @@
 import gym
 import gym_pcgrl
-from stable_baselines import PPO2
-from stable_baselines.common.policies import MlpPolicy, MlpLstmPolicy, MlpLnLstmPolicy, CnnPolicy, CnnLstmPolicy, CnnLnLstmPolicy
+import time 
+import numpy as np
 
 # https://www.youtube.com/watch?v=dLP-2Y6yu70&ab_channel=sentdex
+if __name__ == '__main__':
+    from gym_pcgrl.envs.probs.MarioLevelRepairer.CNet.model import CNet
+# env = gym.make('zelda-narrow-v0')
+# env.reset()
 
-env = gym.make('smb-narrow-v0')
-env.reset()
+# # model = PPO2(CnnLnLstmPolicy, env, nminibatches=1, verbose=1)
+# # model.learn(total_timesteps=10000)
 
-# model = PPO2(CnnLnLstmPolicy, env, nminibatches=1, verbose=1)
-# model.learn(total_timesteps=10000)
+# # episodes = 10
+# # for ep in range(episodes):
+# #     obs = env.reset()
+# #     done = False
+# while True:    
+#     env.render()
+#     obs, reward, done, info = env.step(env.action_space.sample())
 
-# episodes = 10
-# for ep in range(episodes):
-#     obs = env.reset()
-#     done = False
-while True:    
-    env.render()
-    obs, reward, done, info = env.step(env.action_space.sample())
+# env.close()
 
-env.close()
-
+# Checking how it gets printed 
 # def get_tile_types():
 #     return ["empty", "solid", "enemy", "brick", "question", "coin", "tube"]
 
@@ -32,7 +34,7 @@ env.close()
 # width = 30
 
 # rows = []
-# # cols = []
+# cols = []
 
 # for i in range(height):
 #     cols = []
@@ -65,3 +67,31 @@ env.close()
 
 # print(lvlString)
 # print(len(lvlString))
+
+# add "time.sleep()" to slow the frame rate
+
+# --------------------------------
+
+    env = gym.make('smb-wide-v0')
+
+    # Observation and action space 
+    obs_space = env.observation_space
+    action_space = env.action_space
+    # print("The observation space: {}".format(obs_space))
+    # print("The action space: {}".format(action_space))
+
+    obs = env.reset()
+    for t in range(1):
+        action = env.action_space.sample()
+        # print("action: ", action)
+        # print("action type: ", type(action))
+        obs, reward, done, info = env.step(env.action_space.sample()) # [0, 0, 2]
+        # print("obs: ", obs)
+        env.render('human')
+        time.sleep(1)
+        # if done:
+        #     print("Episode finished after {} timesteps".format(t+1))
+        #     break
+    
+
+

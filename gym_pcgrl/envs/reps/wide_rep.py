@@ -12,6 +12,7 @@ class WideRepresentation(Representation):
     """
     def __init__(self):
         super().__init__()
+        self._iteration = 0
 
     """
     Gets the action space used by the wide representation
@@ -27,6 +28,23 @@ class WideRepresentation(Representation):
     """
     def get_action_space(self, width, height, num_tiles):
         return spaces.MultiDiscrete([width, height, num_tiles])
+        # return spaces.MultiDiscrete([1, 1, num_tiles])
+
+    """
+    Resets the current representation where it resets the parent and the current
+    turtle location
+
+    Parameters:
+        width (int): the generated map width
+        height (int): the generated map height
+        prob (dict(int,float)): the probability distribution of each tile value
+    """
+    def reset(self, width, height, prob):
+        super().reset(width, height, prob)
+        self._x = self._random.randint(width)
+        self._y = self._random.randint(height)
+        # self._x = self._random.integers(width)
+        # self._y = self._random.integers(height)
 
     """
     Get the observation space used by the wide representation
@@ -65,6 +83,61 @@ class WideRepresentation(Representation):
         boolean: True if the action change the map, False if nothing changed
     """
     def update(self, action):
+        # print("Action: ", action[2])
+        # if the it's the same tile, return True -> 1; otherwise, return False -> 0
         change = [0,1][self._map[action[1]][action[0]] != action[2]]
         self._map[action[1]][action[0]] = action[2]
+        self._x = action[0]
+        self._y = action[1]
         return change, action[0], action[1]
+
+    # def update(self, iterations, action):
+    #     # if the it's the same tile, return True -> 1; otherwise, return False -> 0
+    #     change = [0,1][self._map[action[1]][action[0]] != action[2]]
+    #     self._map[action[1]][action[0]] = action[2]
+    #     self._x = action[0]
+    #     self._y = action[1]
+
+    #     # if iterations >= 0 or iterations <= 999:
+    #     #     pass
+    #     # elif iterations >= 1000 or iterations <= 1999:
+    #     #     pass
+    #     # elif iterations >= 2000 or iterations <= 2999:
+    #     #     pass
+    #     # elif iterations >= 3000 or iterations <= 3999:
+    #     #     pass
+    #     # elif iterations >= 4000 or iterations <= 4999:
+    #     #     pass
+    #     return change, action[0], action[1]
+
+    """
+    Modify the level image with a red rectangle around the tile that is
+    going to be modified
+
+    Parameters:
+        lvl_image (img): the current level_image without modifications
+        tile_size (int): the size of tiles in pixels used in the lvl_image
+        border_size ((int,int)): an offeset in tiles if the borders are not part of the level
+
+    Returns:
+        img: the modified level image
+    """
+    def render(self, lvl_image, tile_size, border_size):
+        x_graphics = Image.new("RGBA", (tile_size,tile_size), (0,0,0,0))
+        for x in range(tile_size):
+            x_graphics.putpixel((0,x),(255,0,0,255))
+            x_graphics.putpixel((1,x),(255,0,0,255))
+            x_graphics.putpixel((tile_size-2,x),(255,0,0,255))
+            x_graphics.putpixel((tile_size-1,x),(255,0,0,255))
+        for y in range(tile_size):
+            x_graphics.putpixel((y,0),(255,0,0,255))
+            x_graphics.putpixel((y,1),(255,0,0,255))
+            x_graphics.putpixel((y,tile_size-2),(255,0,0,255))
+            x_graphics.putpixel((y,tile_size-1),(255,0,0,255))
+        lvl_image.paste(x_graphics, ((self._x+border_size[0])*tile_size, (self._y+border_size[1])*tile_size,
+                                        (self._x+border_size[0]+1)*tile_size,(self._y+border_size[1]+1)*tile_size), x_graphics)
+
+        self._iteration = self._iteration + 1
+        lvl_image.save("wide_rep_images/lvl_img_{}.png".format(self._iteration))
+
+        return lvl_image
