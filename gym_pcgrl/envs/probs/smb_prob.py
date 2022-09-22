@@ -10,6 +10,7 @@ from gym_pcgrl.envs.probs.MarioLevelRepairer.GA.repairer import Repairer
 import random
 import time
 import subprocess
+from gym_pcgrl.envs.probs.utils import *
 rootpath = os.path.abspath(os.path.dirname(__file__)) + "/"
 
 class SMBProblem(Problem):
