@@ -42,7 +42,13 @@ class SMBProblem(Problem):
         self.initial_state = None
         self.nz = 32
         self.generator = Generator(random.randint(1, 10000000))
-        self.repairer = Repairer(0) #passing in cuda_id=0 for only cpu
+        self.repairer = Repairer(0) # passing in cuda_id=0 for only cpu
+        self._block_num = 1 # to tell which block iteration is on
+
+    def reset(self, start_stats):
+        super().reset(start_stats)
+        self._block_num = 1 # to tell which block iteration is on
+
 
     def sample_random_vector(self, size):
         return np.clip(np.random.randn(size), -1, 1)
@@ -134,7 +140,7 @@ class SMBProblem(Problem):
     def update_rep_map(self, map):
         
         playable = False
-        
+
         # Keep generate the initial block till it's playable
         while not playable:
             if self.initial_state != None:
@@ -147,7 +153,8 @@ class SMBProblem(Problem):
             st = time.time()
             new_piece = self.repairer.repair(piece)
 
-            # print("rootpath: ", rootpath)
+            # Pass in the generated piece to the Mario AI to check
+            # if the new piece is playable
             self.saveLevelAsText(new_piece, rootpath + "mario_current_map")
             subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
             completion_rate = self.readMarioAIResultFile(rootpath + "\mario_result.txt")

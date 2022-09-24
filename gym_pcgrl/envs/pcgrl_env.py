@@ -71,8 +71,10 @@ class PcgrlEnv(gym.Env):
         self._changes = 0
         self._iteration = 0
         self._rep.reset(self._prob._width, self._prob._height, get_int_prob(self._prob._prob, self._prob.get_tile_types()))
+
         if self._prob_str == "smb":
             self._prob.update_rep_map(self._rep._map)
+        
         self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
         self._prob.reset(self._rep_stats)
         self._heatmap = np.zeros((self._prob._height, self._prob._width))
@@ -133,6 +135,12 @@ class PcgrlEnv(gym.Env):
         dictionary: debug information that might be useful to understand what's happening
     """
     def step(self, action):
+
+        # check the validity of the action
+        # if the action space is out of range, then do not update the state and return a huge negative value
+        # In the problem, there will be a variable or indicator that tells which blocks of the map that the
+        # agent is allowed to change
+
         self._iteration += 1
         #save copy of the old stats to calculate the reward
         old_stats = self._rep_stats
