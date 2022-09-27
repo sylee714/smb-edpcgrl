@@ -88,7 +88,7 @@ class Problem:
     Returns:
         dict(string,any): stats of the current map to be used in the reward, episode_over, debug_info calculations
     """
-    def get_stats(self, map):
+    def get_stats(self, map=None):
         raise NotImplementedError('get_graphics is not implemented')
 
     """
@@ -101,11 +101,8 @@ class Problem:
     Returns:
         float: the current reward due to the change between the old map stats and the new map stats
     """
-    def get_reward(self, new_stats, old_stats):
+    def get_reward(self, new_stats=None, old_stats=None, map=None):
         raise NotImplementedError('get_reward is not implemented')
-
-    # def get_reward(self, iterations, new_stats, old_stats):
-    #     raise NotImplementedError('get_reward is not implemented')
 
     """
     Uses the stats to check if the problem ended (episode_over) which means reached

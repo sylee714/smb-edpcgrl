@@ -81,7 +81,7 @@ if __name__ == '__main__':
     # print("The action space: {}".format(action_space))
 
     obs = env.reset()
-    for t in range(1):
+    for t in range(100):
         action = env.action_space.sample()
         # print("action: ", action)
         # print("action type: ", type(action))

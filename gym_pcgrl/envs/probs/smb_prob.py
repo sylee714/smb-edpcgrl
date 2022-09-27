@@ -11,6 +11,9 @@ import random
 import time
 import subprocess
 from gym_pcgrl.envs.probs.utils import *
+from gym_pcgrl.envs.helper import *
+from gym_pcgrl.envs.probs.utils import *
+from collections import deque
 rootpath = os.path.abspath(os.path.dirname(__file__)) + "/"
 
 class SMBProblem(Problem):
@@ -43,11 +46,21 @@ class SMBProblem(Problem):
         self.nz = 32
         self.generator = Generator(random.randint(1, 10000000))
         self.repairer = Repairer(0) # passing in cuda_id=0 for only cpu
-        self._block_num = 1 # to tell which block iteration is on
+        self._start_block_num = 1
+        self._end_block_num = 5
+        self._cur_block_num = 1 # to tell which block iteration is on
+
+        self.win_h, self.win_w = 14, 28
+        self.sy, self.sx = 14, 7
+        self.ny, self.nx = 0, 3
+
+        self.F_que = deque(maxlen=1000)
+        self.H_que = deque(maxlen=1000)
+
 
     def reset(self, start_stats):
         super().reset(start_stats)
-        self._block_num = 1 # to tell which block iteration is on
+        self._cur_block_num = self._start_block_num # to tell which block iteration is on
 
 
     def sample_random_vector(self, size):
@@ -117,10 +130,32 @@ class SMBProblem(Problem):
                 elif map[i][j] == 12:
                     map[i][j] = 0
     
-    # Converts PCGRL map tiles to Mariopuzzle map tiles
-    # Numerical version
-    def convertPCGRL2MP_num(self, map):
-        pass
+    # Converts PCGRL str map tiles to Mariopuzzle num map tiles
+    def convertPCGRL_str2MP_num(self, map):
+        for i in range(len(map)):
+            for j in range(len(map[i])):
+                if map[i][j] == "empty":
+                    map[i][j] = 2
+                elif map[i][j] == "solid":
+                    map[i][j] = 1
+                elif map[i][j] == "solid_above":
+                    map[i][j] = 1
+                elif map[i][j] == "enemy":
+                    map[i][j] = 5
+                elif map[i][j] == "brick": 
+                    map[i][j] = 0
+                elif map[i][j] == "question":
+                    map[i][j] = 3
+                elif map[i][j] == "coin":
+                    map[i][j] = 10
+                elif map[i][j] == "top_left":
+                    map[i][j] = 6
+                elif map[i][j] == "top_right":
+                    map[i][j] = 7
+                elif map[i][j] == "tube_left":
+                    map[i][j] = 8
+                elif map[i][j] == "tube_right":
+                    map[i][j] = 9
 
     # This method saves the passed in level map using the Mariopuzzle symbols
     def saveLevelAsText(self, level, path):
@@ -137,8 +172,7 @@ class SMBProblem(Problem):
         f = open(path, "r")
         return float(f.read())
 
-    def update_rep_map(self, map):
-        
+    def update_rep_map_with_init_block(self, map):
         playable = False
 
         # Keep generate the initial block till it's playable
@@ -158,20 +192,18 @@ class SMBProblem(Problem):
             self.saveLevelAsText(new_piece, rootpath + "mario_current_map")
             subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
             completion_rate = self.readMarioAIResultFile(rootpath + "\mario_result.txt")
-            print("completion rate: ", completion_rate)
+            print("Initial Block Completion Rate: ", completion_rate)
             if completion_rate == 1.0:
                 playable = True
             else:
                 pass
 
         self.convertMP2PCGRL_num(new_piece)
-        print("Initial Block")
-        print(new_piece)
-        map[:, :28] = new_piece
-        # return map
 
-    def createMapFile(self, map):
-        pass
+        # print("Initial Block")
+        # print(new_piece)
+
+        map[:, :28] = new_piece
 
     def get_tile_types(self):
         return ["empty", "solid", "enemy", "brick", "question", "coin", "tube"]
@@ -190,6 +222,29 @@ class SMBProblem(Problem):
                 if t in self._rewards:
                     self._rewards[t] = rewards[t]
 
+    def _convert_num_to_str_tiles(self, map):
+        new_map = []
+
+        for y in range(len(map)):
+            new_map.append([])
+
+            # This distinguishes between solid and solid above & different parts of tube
+            for x in range(len(map[y])):
+                value = map[y][x]
+                if map[y][x] == "solid" and y < self._height - 2:
+                    value = "solid_above"
+                if map[y][x] == "tube":
+                    if y >= 1 and map[y-1][x] != "tube":
+                        value = "top"
+                    if x >= 1 and map[y][x-1] != "tube":
+                        value += "_left"
+                    else:
+                        value += "_right"
+                new_map[y].append(value)
+
+        return new_map
+
+    # Convert the current map as runnable to render by adding Mario at the front and the finish pole at the end.
     def _get_runnable_lvl(self, map):
         # size of map = 140 x 14 -> without 3 left/right cols for the player and the pole
         # size of new map = 146 x 14
@@ -232,14 +287,6 @@ class SMBProblem(Problem):
         new_map[1][-2] = "pole_top"
         new_map[2][-2] = "pole_flag"
         new_map[2][-3] = "flag"
-
-        # print(len(map))
-        # print(len(map[0]))
-        # print(len(new_map))
-        # print(len(new_map[0]))
-
-        # print(map)
-        # print(new_map)
 
         return new_map
 
@@ -293,50 +340,97 @@ class SMBProblem(Problem):
 
         return solState.getHeuristic(), solState.getGameStatus()
 
-    def get_stats(self, map):
-        map_locations = get_tile_locations(map, self.get_tile_types())
+    def get_stats(self, map=None):
+        # map_locations = get_tile_locations(map, self.get_tile_types())
         map_stats = {
-            "dist-floor": get_floor_dist(map, ["enemy"], ["solid", "brick", "question", "tube_left", "tube_right"]),
-            "disjoint-tubes": get_type_grouping(map, ["tube"], [(-1,0),(1,0)],1,1),
-            "enemies": calc_certain_tile(map_locations, ["enemy"]),
-            "empty": calc_certain_tile(map_locations, ["empty"]),
-            "noise": get_changes(map, False) + get_changes(map, True),
-            "jumps": 0,
-            "jumps-dist": 0,
-            "dist-win": 0
+            # "dist-floor": get_floor_dist(map, ["enemy"], ["solid", "brick", "question", "tube_left", "tube_right"]),
+            # "disjoint-tubes": get_type_grouping(map, ["tube"], [(-1,0),(1,0)],1,1),
+            # "enemies": calc_certain_tile(map_locations, ["enemy"]),
+            # "empty": calc_certain_tile(map_locations, ["empty"]),
+            # "noise": get_changes(map, False) + get_changes(map, True),
+            # "jumps": 0,
+            # "jumps-dist": 0,
+            # "dist-win": 0,
+            "block-num": self._cur_block_num
         }
-        map_stats["dist-win"], play_stats = self._run_game(map)
-        map_stats["jumps"] = play_stats["jumps"]
-        prev_jump = 0
-        value = 0
-        for l in play_stats["jump_locs"]:
-            value = max(value, l[0] - prev_jump)
-            prev_jump = l[0]
-        value = max(value, self._width - prev_jump)
-        map_stats["jumps-dist"] = value
+        # map_stats["dist-win"], play_stats = self._run_game(map)
+        # map_stats["jumps"] = play_stats["jumps"]
+        # prev_jump = 0
+        # value = 0
+        # for l in play_stats["jump_locs"]:
+        #     value = max(value, l[0] - prev_jump)
+        #     prev_jump = l[0]
+        # value = max(value, self._width - prev_jump)
+        # map_stats["jumps-dist"] = value
         return map_stats
 
-    def get_reward(self, new_stats, old_stats):
-        #longer path is rewarded and less number of regions is rewarded
-        rewards = {
-            "dist-floor": get_range_reward(new_stats["dist-floor"], old_stats["dist-floor"], 0, 0),
-            "disjoint-tubes": get_range_reward(new_stats["disjoint-tubes"], old_stats["disjoint-tubes"], 0, 0),
-            "enemies": get_range_reward(new_stats["enemies"], old_stats["enemies"], self._min_enemies, self._max_enemies),
-            "empty": get_range_reward(new_stats["empty"], old_stats["empty"], self._min_empty, np.inf),
-            "noise": get_range_reward(new_stats["noise"], old_stats["noise"], 0, 0),
-            "jumps": get_range_reward(new_stats["jumps"], old_stats["jumps"], self._min_jumps, np.inf),
-            "jumps-dist": get_range_reward(new_stats["jumps-dist"], old_stats["jumps-dist"], 0, 0),
-            "dist-win": get_range_reward(new_stats["dist-win"], old_stats["dist-win"], 0, 0)
-        }
+    def get_reward(self, new_stats=None, old_stats=None, map=None): 
+
+        reward, done = 0, False
+
+        # Calculate the X start position based on the current block number
+        now_x = 0 + 28 * self._cur_block_num
+
+        # Convert the map to MarioPuzzle tile to run the Mario-AI framework
+        # First, need to convert the num tiles to str tiles in PCG-RL, since some tiles like tubes are not distinguishable
+        # Then, convert the pcg-rl str tiles to mariopuzzle num-tiles
+
+        # Convert the pcg-rl num tiles to str tiles
+        new_map = self._convert_num_to_str_tiles(get_string_map(map, self.get_tile_types()))
+        new_map = np.array(new_map)
+
+        # convert the pcg-rl str tiles to mariopuzzle num-tiles
+        self.convertPCGRL_str2MP_num(new_map)
+        # print(new_map)
+        self.saveLevelAsText(new_map[:, max(0, now_x-3*self.win_w): now_x+self.win_w], rootpath + "mario_current_map")
+        subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
+        completion_rate = self.readMarioAIResultFile(rootpath + "\mario_result.txt")
+        reward += completion_rate
+        print("completion rate: ", completion_rate)
+
+        # calculate the diversity
+        kl_val = KLWithSlideWindow(
+            self.lv, (0, now_x, self.win_h, self.win_w), self.sx, self.nx, self.sy, self.ny)
+        
+        # need to clear the F_que when we move to the next block section
+        # calculate fun 
+        rew_F = self.add_then_norm(self.kl_fn(kl_val), self.F_que)
+        reward += rew_F
+
+        # calculate historical deviation
+        piece_map = lv2Map(new_map[:, now_x : now_x + self.win_w])
+        novelty = self.cal_novelty(piece_map)
+        rew_H = self.add_then_norm(novelty, self.H_que)
+        reward += rew_H
+        
         #calculate the total reward
-        return rewards["dist-floor"] * self._rewards["dist-floor"] +\
-            rewards["disjoint-tubes"] * self._rewards["disjoint-tubes"] +\
-            rewards["enemies"] * self._rewards["enemies"] +\
-            rewards["empty"] * self._rewards["empty"] +\
-            rewards["noise"] * self._rewards["noise"] +\
-            rewards["jumps"] * self._rewards["jumps"] +\
-            rewards["jumps-dist"] * self._rewards["jumps-dist"] +\
-            rewards["dist-win"] * self._rewards["dist-win"]
+        return 0
+
+    def cal_novelty(self, piece):
+        score = []
+        for x in self.pop:
+            score.append(calKLFromMap(x, piece))
+        score.sort()
+        sum = 0
+        # novel_k = 10
+        # only consider top 10 most similar blocks
+        siz = min(len(score), self.novel_k)
+        for i in range(siz):
+            sum += score[i]
+        if siz > 0:
+            sum /= siz
+        return sum
+
+    def add_then_norm(self, value, history):
+        if not self.norm:
+            return value
+        history.append(value)
+        maxv = max(history)
+        minv = min(history)
+        if maxv == minv:
+            return 0
+        else:
+            return (value-minv)/(maxv-minv)
     
     # def get_reward(self, iterations, action, new_stats, old_stats):
     #     print("Iterations: ", iterations)

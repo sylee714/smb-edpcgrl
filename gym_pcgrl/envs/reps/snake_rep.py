@@ -7,7 +7,7 @@ from collections import OrderedDict
 """
 The wide representation where the agent can pick the tile position and tile value at each update.
 """
-class ExperienceDrivenRepresentation(Representation):
+class SnakeRepresentation(Representation):
     """
     Initialize all the parameters used by that representation
     """

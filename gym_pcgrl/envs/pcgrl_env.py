@@ -73,7 +73,7 @@ class PcgrlEnv(gym.Env):
         self._rep.reset(self._prob._width, self._prob._height, get_int_prob(self._prob._prob, self._prob.get_tile_types()))
 
         if self._prob_str == "smb":
-            self._prob.update_rep_map(self._rep._map)
+            self._prob.update_rep_map_with_init_block(self._rep._map)
         
         self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
         self._prob.reset(self._rep_stats)
@@ -141,6 +141,28 @@ class PcgrlEnv(gym.Env):
         # In the problem, there will be a variable or indicator that tells which blocks of the map that the
         # agent is allowed to change
 
+        print("Current Block Num: ", self._prob.get_stats()["block-num"])
+
+        reward = self._prob.get_reward(map=self._rep._map)
+
+        cur_block_num = self._prob.get_stats()["block-num"]
+        allowed_min_x = 0 + 28 * cur_block_num
+        allowed_max_x = allowed_min_x + 27
+
+        # if allowed_max_x <= action[2] and action[2] <= allowed_max_x:
+        #     # action is valid
+        #     # 1. Make a change
+        #     change, x, y = self._rep.update(action)
+
+        #     # 2. Calculate the new reward
+        #     print("Rep Map: ", self._rep._map)
+        #     reward = self._prob.get_reward(self._rep._map)
+
+        # else:
+        #     # action is not valid
+        #     pass
+
+
         self._iteration += 1
         #save copy of the old stats to calculate the reward
         old_stats = self._rep_stats
@@ -152,18 +174,14 @@ class PcgrlEnv(gym.Env):
             self._changes += change
             self._heatmap[y][x] += 1.0
             self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
+
         # calculate the values
         observation = self._rep.get_observation()
         observation["heatmap"] = self._heatmap.copy()
-        # reward = None
-        # print(self._prob_str)
-        # if self._prob_str == "smb":
-        #     reward = self._prob.get_reward(self._iteration, self._rep_stats, old_stats)
-        # else:
-        reward = self._prob.get_reward(self._rep_stats, old_stats)
+
             
-        done = self._prob.get_episode_over(self._rep_stats,old_stats) or self._changes >= self._max_changes or self._iteration >= self._max_iterations
-        info = self._prob.get_debug_info(self._rep_stats,old_stats)
+        done = False
+        info = {}
         info["iterations"] = self._iteration
         info["changes"] = self._changes
         info["max_iterations"] = self._max_iterations
