@@ -70,7 +70,7 @@ class PcgrlEnv(gym.Env):
         
         self._changes = 0
         self._iteration = 0
-        self._rep.reset(self._prob._width, self._prob._height, get_int_prob(self._prob._prob, self._prob.get_tile_types()))
+        self._rep.reset(self._prob._width, self._prob._height, get_int_prob(self._prob._prob, self._prob.get_tile_types()), self._prob.win_w, self._prob.win_h)
 
         if self._prob_str == "smb":
             self._prob.update_rep_map_with_init_block(self._rep._map)

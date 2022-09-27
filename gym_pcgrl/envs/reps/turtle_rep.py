@@ -27,7 +27,7 @@ class TurtleRepresentation(Representation):
         height (int): the generated map height
         prob (dict(int,float)): the probability distribution of each tile value
     """
-    def reset(self, width, height, prob):
+    def reset(self, width, height, prob, win_width=0, win_height=0):
         super().reset(width, height, prob)
         self._x = self._random.randint(width)
         self._y = self._random.randint(height)

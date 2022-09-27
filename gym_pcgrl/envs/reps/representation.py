@@ -37,7 +37,7 @@ class Representation:
         height (int): the generated map height
         prob (dict(int,float)): the probability distribution of each tile value
     """
-    def reset(self, width, height, prob):
+    def reset(self, width, height, prob, win_width=0, win_height=0):
         if self._random_start or self._old_map is None:
             self._map = gen_random_map(self._random, width, height, prob)
             self._old_map = self._map.copy()

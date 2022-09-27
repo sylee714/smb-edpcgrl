@@ -205,6 +205,21 @@ class SMBProblem(Problem):
 
         map[:, :28] = new_piece
 
+    # This method is to repair a block after the representation finishes updating the working block.
+    def repair_block(self, map, block_num):
+        # 1. Need to convert PCGRL tiles to MP tiles
+        # 2. Pass the block to the repairer
+        # 3. Swap the original block with the repaired one
+
+        # First, need to convert the num tiles to str tiles in PCG-RL, since some tiles like tubes are not distinguishable
+        # Then, convert the pcg-rl str tiles to mariopuzzle num-tiles
+        new_map = self._convert_num_to_str_tiles(get_string_map(map, self.get_tile_types()))
+        new_map = np.array(new_map)
+
+        # convert the pcg-rl str tiles to mariopuzzle num-tiles
+        self.convertPCGRL_str2MP_num(new_map)
+        pass
+
     def get_tile_types(self):
         return ["empty", "solid", "enemy", "brick", "question", "coin", "tube"]
 

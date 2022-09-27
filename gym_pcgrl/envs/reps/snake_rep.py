@@ -5,7 +5,12 @@ import numpy as np
 from collections import OrderedDict
 
 """
-The wide representation where the agent can pick the tile position and tile value at each update.
+This representation is solely inteded to be used with SMB
+The snake representation where the agent starts at (x=28, y=0) and changes the tile value at each update.
+It goes to left till x=55 and goes moves down and goes to right till x=0. It repeats this pattern until
+it reaches (0, 28), which covers the second block.
+Then, for the next block it starts at (x=56, y=0) and follows the same pattern.
+For the remaining blocks, it does the same thing.
 """
 class SnakeRepresentation(Representation):
     """
@@ -16,7 +21,7 @@ class SnakeRepresentation(Representation):
         self._iteration = 0
 
     """
-    Gets the action space used by the wide representation
+    Gets the action space used by the narrow representation
 
     Parameters:
         width: the current map width
@@ -24,28 +29,41 @@ class SnakeRepresentation(Representation):
         num_tiles: the total number of the tile values
 
     Returns:
-        MultiDiscrete: the action space used by that wide representation which
-        consists of the x position, y position, and the tile value
+        Discrete: the action space used by that narrow representation which
+        correspond to which value for each tile type
     """
     def get_action_space(self, width, height, num_tiles):
-        return spaces.MultiDiscrete([width, height, num_tiles])
+        return spaces.MultiDiscrete(num_tiles)
 
     """
     Resets the current representation where it resets the parent and the current
-    turtle location
+    modified location
 
     Parameters:
         width (int): the generated map width
         height (int): the generated map height
-        prob (dict(int,float)): the probability distribution of each tile value
     """
-    def reset(self, width, height, prob):
+    def reset(self, width, height, prob, win_width=0, win_height=0):
         super().reset(width, height, prob)
-        self._x = self._random.randint(width)
-        self._y = self._random.randint(height)
+        self._x = 0
+        self._y = 0
+        self._iteration = 0
+
+        self._width = width
+        self._height = height
+
+        self._win_width = win_width
+        self._win_height = win_height
+
+        self._down_point_list = []
+        for i in range(height):
+            if i % 2 == 0:
+                self._down_point_list.append(win_width-1, i)
+            else:
+                self._down_point_list.append(0, i)
 
     """
-    Get the observation space used by the wide representation
+    Get the observation space used by the narrow representation
 
     Parameters:
         width: the current map width
@@ -53,10 +71,12 @@ class SnakeRepresentation(Representation):
         num_tiles: the total number of the tile values
 
     Returns:
-        Box: the observation space used by that representation. A 2D array of tile numbers
+        Dict: the observation space used by that representation. "pos" Integer
+        x,y position for the current location. "map" 2D array of tile numbers
     """
     def get_observation_space(self, width, height, num_tiles):
         return spaces.Dict({
+            "pos": spaces.Box(low=np.array([0, 0]), high=np.array([width-1, height-1]), dtype=np.uint8),
             "map": spaces.Box(low=0, high=num_tiles-1, dtype=np.uint8, shape=(height, width))
         })
 
@@ -64,12 +84,14 @@ class SnakeRepresentation(Representation):
     Get the current representation observation object at the current moment
 
     Returns:
-        observation: the current observation at the current moment. A 2D array of tile numbers
+        observation: the current observation at the current moment. "pos" Integer
+        x,y position for the current location. "map" 2D array of tile numbers
     """
     def get_observation(self):
-        return {
+        return OrderedDict({
+            "pos": np.array([self._x, self._y], dtype=np.uint8),
             "map": self._map.copy()
-        }
+        })
 
     """
     Update the wide representation with the input action
@@ -82,11 +104,29 @@ class SnakeRepresentation(Representation):
     """
     def update(self, action):
         # if the it's the same tile, return True -> 1; otherwise, return False -> 0
-        change = [0,1][self._map[action[1]][action[0]] != action[2]]
-        self._map[action[1]][action[0]] = action[2]
-        self._x = action[0]
-        self._y = action[1]
-        return change, action[0], action[1]
+        change = [0,1][self._map[self._y][self._x] != action]
+        self._map[self._y][self._x] = action
+        
+        # Update the x and y
+        # Check if it reached the end point of the last block
+        if self._x != self._width - self._win_width and self._y != self._height - 1:
+            # If it reached the end point, then move to the next block
+            if self._x % self._win_width == 0 and self._y % self._win_height == self._win_height - 1:
+                self._y = 0
+                self._x += self._win_width
+            else:
+                # if it's a down point, then move down
+                if (self._x % self._win_width, self._y % self._win_height) in self._down_point_list:
+                    self._y += 1
+                else:
+                    # move to right
+                    if self._y % 2 == 0:
+                        self._x += 1
+                    # move to left
+                    else:
+                        self._x -= 1
+
+        return change, self._x, self._y
 
     """
     Modify the level image with a red rectangle around the tile that is
@@ -116,6 +156,6 @@ class SnakeRepresentation(Representation):
                                         (self._x+border_size[0]+1)*tile_size,(self._y+border_size[1]+1)*tile_size), x_graphics)
 
         self._iteration = self._iteration + 1
-        lvl_image.save("wide_rep_images/lvl_img_{}.png".format(self._iteration))
+        lvl_image.save("snake_rep_images/lvl_img_{}.png".format(self._iteration))
 
         return lvl_image

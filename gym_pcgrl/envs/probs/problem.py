@@ -16,6 +16,9 @@ class Problem:
         for _ in range(len(tiles)):
             self._prob.append(1.0/len(tiles))
 
+
+        self.win_h, self.win_w = 14, 28
+        
         self._border_size = (1,1)
         self._border_tile = tiles[0]
         self._tile_size=16
