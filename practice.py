@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
 # --------------------------------
 
-env = gym.make('smb-narrow-v0')
+env = gym.make('smb-snake-v0')
 
 # Observation and action space 
 obs_space = env.observation_space
@@ -80,18 +80,18 @@ action_space = env.action_space
 print("The observation space: {}".format(obs_space))
 print("The action space: {}".format(action_space))
 
-# obs = env.reset()
-# for t in range(100):
-#     action = env.action_space.sample()
-#     # print("action: ", action)
-#     # print("action type: ", type(action))
-#     obs, reward, done, info = env.step(env.action_space.sample()) # [0, 0, 2]
-#     # print("obs: ", obs)
-#     env.render('human')
-#     time.sleep(1)
-#     # if done:
-#     #     print("Episode finished after {} timesteps".format(t+1))
-#     #     break
+obs = env.reset()
+for t in range(1000):
+    action = env.action_space.sample()
+    # print("action: ", action)
+    # print("action type: ", type(action))
+    obs, reward, done, info = env.step(env.action_space.sample()) # [0, 0, 2]
+    # print("obs: ", obs)
+    env.render('human')
+    time.sleep(0.25)
+    # if done:
+    #     print("Episode finished after {} timesteps".format(t+1))
+    #     break
 
 
 

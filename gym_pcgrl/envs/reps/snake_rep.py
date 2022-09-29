@@ -18,6 +18,8 @@ class SnakeRepresentation(Representation):
     """
     def __init__(self):
         super().__init__()
+        self._x = 28
+        self._y = 0
         self._iteration = 0
 
     """
@@ -45,7 +47,7 @@ class SnakeRepresentation(Representation):
     """
     def reset(self, width, height, prob, win_width=0, win_height=0):
         super().reset(width, height, prob)
-        self._x = 0
+        self._x = 28
         self._y = 0
         self._iteration = 0
 
@@ -58,9 +60,9 @@ class SnakeRepresentation(Representation):
         self._down_point_list = []
         for i in range(height):
             if i % 2 == 0:
-                self._down_point_list.append(win_width-1, i)
+                self._down_point_list.append((win_width-1, i))
             else:
-                self._down_point_list.append(0, i)
+                self._down_point_list.append((0, i))
 
     """
     Get the observation space used by the narrow representation
@@ -103,13 +105,16 @@ class SnakeRepresentation(Representation):
         boolean: True if the action change the map, False if nothing changed
     """
     def update(self, action):
-        # if the it's the same tile, return True -> 1; otherwise, return False -> 0
+        change = 0
+        # Check if it reached the end point of the last block
+        # if self._x != self._width - self._win_width or self._y != self._height - 1:
+            # if the it's the same tile, return True -> 1; otherwise, return False -> 0
         change = [0,1][self._map[self._y][self._x] != action]
         self._map[self._y][self._x] = action
         
         # Update the x and y
         # Check if it reached the end point of the last block
-        if self._x != self._width - self._win_width and self._y != self._height - 1:
+        if self._x != self._width - self._win_width or self._y != self._height - 1:
             # If it reached the end point, then move to the next block
             if self._x % self._win_width == 0 and self._y % self._win_height == self._win_height - 1:
                 self._y = 0

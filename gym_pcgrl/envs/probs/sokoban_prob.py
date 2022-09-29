@@ -154,7 +154,7 @@ class SokobanProblem(Problem):
     Returns:
         float: the current reward due to the change between the old map stats and the new map stats
     """
-    def get_reward(self, new_stats, old_stats):
+    def get_reward(self, new_stats, old_stats, map=None, iterations=0):
         #longer path is rewarded and less number of regions is rewarded
         rewards = {
             "player": get_range_reward(new_stats["player"], old_stats["player"], 1, 1),

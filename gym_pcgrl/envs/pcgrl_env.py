@@ -30,17 +30,12 @@ class PcgrlEnv(gym.Env):
         self._rep = REPRESENTATIONS[rep]()
         self._rep_stats = None
         self._iteration = 0
-        self._changes = 0
-        self._max_changes = max(int(0.2 * self._prob._width * self._prob._height), 1)
-        self._max_iterations = self._max_changes * self._prob._width * self._prob._height
-        self._heatmap = np.zeros((self._prob._height, self._prob._width))
 
         self.seed()
         self.viewer = None
 
         self.action_space = self._rep.get_action_space(self._prob._width, self._prob._height, self.get_num_tiles())
         self.observation_space = self._rep.get_observation_space(self._prob._width, self._prob._height, self.get_num_tiles())
-        self.observation_space.spaces['heatmap'] = spaces.Box(low=0, high=self._max_changes, dtype=np.uint8, shape=(self._prob._height, self._prob._width))
 
     """
     Seeding the used random variable to get the same result. If the seed is None,
@@ -67,8 +62,6 @@ class PcgrlEnv(gym.Env):
     def reset(self):
         # Initial map gets generated in Representation and it's stored in Rep
         # So, update the initial map with the generated segment
-        
-        self._changes = 0
         self._iteration = 0
         self._rep.reset(self._prob._width, self._prob._height, get_int_prob(self._prob._prob, self._prob.get_tile_types()), self._prob.win_w, self._prob.win_h)
 
@@ -77,10 +70,8 @@ class PcgrlEnv(gym.Env):
         
         self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
         self._prob.reset(self._rep_stats)
-        self._heatmap = np.zeros((self._prob._height, self._prob._width))
 
         observation = self._rep.get_observation()
-        observation["heatmap"] = self._heatmap.copy()
         return observation
 
     """
@@ -120,7 +111,6 @@ class PcgrlEnv(gym.Env):
         self._rep.adjust_param(**kwargs)
         self.action_space = self._rep.get_action_space(self._prob._width, self._prob._height, self.get_num_tiles())
         self.observation_space = self._rep.get_observation_space(self._prob._width, self._prob._height, self.get_num_tiles())
-        self.observation_space.spaces['heatmap'] = spaces.Box(low=0, high=self._max_changes, dtype=np.uint8, shape=(self._prob._height, self._prob._width))
 
     """
     Advance the environment using a specific action
@@ -141,13 +131,14 @@ class PcgrlEnv(gym.Env):
         # In the problem, there will be a variable or indicator that tells which blocks of the map that the
         # agent is allowed to change
 
-        print("Current Block Num: ", self._prob.get_stats()["block-num"])
+        # print("Current Block Num: ", self._prob.get_stats()["block-num"])
+        
+        reward = 0
+        # reward = self._prob.get_reward(map=self._rep._map)
 
-        reward = self._prob.get_reward(map=self._rep._map)
-
-        cur_block_num = self._prob.get_stats()["block-num"]
-        allowed_min_x = 0 + 28 * cur_block_num
-        allowed_max_x = allowed_min_x + 27
+        # cur_block_num = self._prob.get_stats()["block-num"]
+        # allowed_min_x = 0 + 28 * cur_block_num
+        # allowed_max_x = allowed_min_x + 27
 
         # if allowed_max_x <= action[2] and action[2] <= allowed_max_x:
         #     # action is valid
@@ -170,22 +161,20 @@ class PcgrlEnv(gym.Env):
         # if self._prob_str == "smb":
         change, x, y = self._rep.update(action)
         
-        if change > 0:
-            self._changes += change
-            self._heatmap[y][x] += 1.0
-            self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
+        # if change > 0:
+        #     self._changes += change
+        #     self._heatmap[y][x] += 1.0
+        #     self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
 
         # calculate the values
         observation = self._rep.get_observation()
-        observation["heatmap"] = self._heatmap.copy()
 
             
         done = False
+        # done = self._prob.get_episode_over(self._rep_stats,old_stats) or self._changes >= self._max_changes or self._iteration >= self._max_iterations
         info = {}
         info["iterations"] = self._iteration
-        info["changes"] = self._changes
-        info["max_iterations"] = self._max_iterations
-        info["max_changes"] = self._max_changes
+        
         #return the values
         return observation, reward, done, info
 

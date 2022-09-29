@@ -21,26 +21,8 @@ class SMBProblem(Problem):
         super().__init__()
         self._width = 140 # original = 114; the width does not include the left 3 cols and right 3 cols
         self._height = 14
-        self._prob = {"empty":0.75, "solid":0.1, "enemy":0.01, "brick":0.04, "question":0.01, "coin":0.02, "tube": 0.02}
+        
         self._border_size = (3, 0)
-
-        self._solver_power = 10000
-
-        self._min_empty = 900
-        self._min_enemies = 10
-        self._max_enemies = 30
-        self._min_jumps = 20
-
-        self._rewards = {
-            "dist-floor": 2,
-            "disjoint-tubes": 1,
-            "enemies": 1,
-            "empty": 1,
-            "noise": 4,
-            "jumps": 2,
-            "jumps-dist": 2,
-            "dist-win": 5
-        }
 
         self.initial_state = None
         self.nz = 32
@@ -62,7 +44,7 @@ class SMBProblem(Problem):
         super().reset(start_stats)
         self._cur_block_num = self._start_block_num # to tell which block iteration is on
 
-
+    # Generate a random vector, which is used to generate the initial block
     def sample_random_vector(self, size):
         return np.clip(np.random.randn(size), -1, 1)
 
@@ -203,7 +185,7 @@ class SMBProblem(Problem):
         # print("Initial Block")
         # print(new_piece)
 
-        map[:, :28] = new_piece
+        map[:, :self.win_w] = new_piece
 
     # This method is to repair a block after the representation finishes updating the working block.
     def repair_block(self, map, block_num):
@@ -226,17 +208,7 @@ class SMBProblem(Problem):
     def adjust_param(self, **kwargs):
         super().adjust_param(**kwargs)
 
-        self._min_empty = kwargs.get('min_empty', self._min_empty)
-        self._min_enemies = kwargs.get('min_enemies', self._min_enemies)
-        self._max_enemies = kwargs.get('max_enemies', self._max_enemies)
-        self._min_jumps = kwargs.get('min_jumps', self._min_jumps)
-
-        rewards = kwargs.get('rewards')
-        if rewards is not None:
-            for t in rewards:
-                if t in self._rewards:
-                    self._rewards[t] = rewards[t]
-
+    # Converts PCGRL num tiles to PCGRL str tiles
     def _convert_num_to_str_tiles(self, map):
         new_map = []
 
@@ -305,86 +277,38 @@ class SMBProblem(Problem):
 
         return new_map
 
-    def _run_game(self, map):
-        # Assign a char symbol to each tile
-        gameCharacters=" # ## #"
-        string_to_char = dict((s, gameCharacters[i]) for i, s in enumerate(self.get_tile_types()))
-        lvlString = ""
-        # Convert the string map to a char map
-        for i in range(len(map)):
-            # first 3 cols of rows 0-10 are empty
-            if i < self._height - 3:
-                lvlString += "   "
-            # first 3 cols of row 11 are for the player tile
-            elif i == self._height - 3:
-                lvlString += " @ "
-            # first 3 cols of rows 12-14 are solids
-            else:
-                lvlString += "###"
-            # Go thru each entry in the map and copy and convert it
-            for j in range(len(map[i])):
-                # print(j)
-                string = map[i][j]
-                lvlString += string_to_char[string]
-            # last 3 cols of rows 0-10 are for the pole tiles
-            if i < self._height - 3:
-                lvlString += " | "
-            # last 3 cols of row 11 are for the pole base
-            elif i == self._height - 3:
-                lvlString += " # "
-            # first 3 cols of rows 12-14 are solids
-            else:
-                lvlString += "###"
-            # add a new line
-            lvlString += "\n"
-
-        # print(lvlString)
-        # print("Length of lvlString: ", len(lvlString))
-
-        state = State()
-        state.stringInitialize(lvlString.split("\n"))
-
-        aStarAgent = AStarAgent()
-
-        sol,solState,iters = aStarAgent.getSolution(state, 1, self._solver_power)
-        if solState.checkWin():
-            return 0, solState.getGameStatus()
-        sol,solState,iters = aStarAgent.getSolution(state, 0, self._solver_power)
-        if solState.checkWin():
-            return 0, solState.getGameStatus()
-
-        return solState.getHeuristic(), solState.getGameStatus()
-
     def get_stats(self, map=None):
-        # map_locations = get_tile_locations(map, self.get_tile_types())
         map_stats = {
-            # "dist-floor": get_floor_dist(map, ["enemy"], ["solid", "brick", "question", "tube_left", "tube_right"]),
-            # "disjoint-tubes": get_type_grouping(map, ["tube"], [(-1,0),(1,0)],1,1),
-            # "enemies": calc_certain_tile(map_locations, ["enemy"]),
-            # "empty": calc_certain_tile(map_locations, ["empty"]),
-            # "noise": get_changes(map, False) + get_changes(map, True),
-            # "jumps": 0,
-            # "jumps-dist": 0,
-            # "dist-win": 0,
             "block-num": self._cur_block_num
         }
-        # map_stats["dist-win"], play_stats = self._run_game(map)
-        # map_stats["jumps"] = play_stats["jumps"]
-        # prev_jump = 0
-        # value = 0
-        # for l in play_stats["jump_locs"]:
-        #     value = max(value, l[0] - prev_jump)
-        #     prev_jump = l[0]
-        # value = max(value, self._width - prev_jump)
-        # map_stats["jumps-dist"] = value
+
         return map_stats
 
-    def get_reward(self, new_stats=None, old_stats=None, map=None): 
+    def get_block_num(self, iterations):
+        # number of tiles in a block
+        num_of_tiles = self.win_h * self.win_w 
+
+        # calculate the max number of block using the map's width
+        # and use the max block to get the current block num with the number of iterations
+
+        if 1 <= iterations and iterations <= num_of_tiles:
+            return 1
+        elif num_of_tiles + 1 <= iterations and iterations <= num_of_tiles * 2:
+            return 2
+        elif 1 <= iterations * 2 + 1 and iterations <= num_of_tiles * 3:
+            return 3
+        elif 1 <= iterations * 3 + 1 and iterations <= num_of_tiles * 4:
+            return 4
+
+
+    def get_reward(self, new_stats=None, old_stats=None, map=None, iterations=0): 
 
         reward, done = 0, False
 
+
+
         # Calculate the X start position based on the current block number
-        now_x = 0 + 28 * self._cur_block_num
+        now_x = 0 + self.win_w * self._cur_block_num
 
         # Convert the map to MarioPuzzle tile to run the Mario-AI framework
         # First, need to convert the num tiles to str tiles in PCG-RL, since some tiles like tubes are not distinguishable
@@ -419,7 +343,7 @@ class SMBProblem(Problem):
         reward += rew_H
         
         #calculate the total reward
-        return 0
+        return reward
 
     def cal_novelty(self, piece):
         score = []
@@ -447,21 +371,6 @@ class SMBProblem(Problem):
         else:
             return (value-minv)/(maxv-minv)
     
-    # def get_reward(self, iterations, action, new_stats, old_stats):
-    #     print("Iterations: ", iterations)
-
-    #     # Return a huge negative reward if an action if out of range
-    #     if iterations >= 0 or iterations <= 999:
-    #         pass
-    #     elif iterations >= 1000 or iterations <= 1999:
-    #         pass
-    #     elif iterations >= 2000 or iterations <= 2999:
-    #         pass
-    #     elif iterations >= 3000 or iterations <= 3999:
-    #         pass
-    #     elif iterations >= 4000 or iterations <= 4999:
-    #         pass
-
     def get_episode_over(self, new_stats, old_stats):
         return new_stats["dist-win"] <= 0
 
