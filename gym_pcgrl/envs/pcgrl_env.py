@@ -30,9 +30,14 @@ class PcgrlEnv(gym.Env):
         self._rep = REPRESENTATIONS[rep]()
         self._rep_stats = None
         self._iteration = 0
+        self._changes = 0
 
         self.seed()
         self.viewer = None
+
+        self._map_width = self._prob._width
+        self._map_height = self._prob._height
+        self._iterations = (self._map_width * self._map_height) - (self._prob.win_h * self._prob.win_w)
 
         self.action_space = self._rep.get_action_space(self._prob._width, self._prob._height, self.get_num_tiles())
         self.observation_space = self._rep.get_observation_space(self._prob._width, self._prob._height, self.get_num_tiles())
@@ -60,9 +65,12 @@ class PcgrlEnv(gym.Env):
         the Observation Space
     """
     def reset(self):
+
+        self._iteration = 0
+        self._changes = 0
+
         # Initial map gets generated in Representation and it's stored in Rep
         # So, update the initial map with the generated segment
-        self._iteration = 0
         self._rep.reset(self._prob._width, self._prob._height, get_int_prob(self._prob._prob, self._prob.get_tile_types()), self._prob.win_w, self._prob.win_h)
 
         if self._prob_str == "smb":
@@ -103,10 +111,6 @@ class PcgrlEnv(gym.Env):
         representation and the used problem
     """
     def adjust_param(self, **kwargs):
-        if 'change_percentage' in kwargs:
-            percentage = min(1, max(0, kwargs.get('change_percentage')))
-            self._max_changes = max(int(percentage * self._prob._width * self._prob._height), 1)
-        self._max_iterations = self._max_changes * self._prob._width * self._prob._height
         self._prob.adjust_param(**kwargs)
         self._rep.adjust_param(**kwargs)
         self.action_space = self._rep.get_action_space(self._prob._width, self._prob._height, self.get_num_tiles())
@@ -125,57 +129,22 @@ class PcgrlEnv(gym.Env):
         dictionary: debug information that might be useful to understand what's happening
     """
     def step(self, action):
-
-        # check the validity of the action
-        # if the action space is out of range, then do not update the state and return a huge negative value
-        # In the problem, there will be a variable or indicator that tells which blocks of the map that the
-        # agent is allowed to change
-
-        # print("Current Block Num: ", self._prob.get_stats()["block-num"])
-        
-        reward = 0
-        # reward = self._prob.get_reward(map=self._rep._map)
-
-        # cur_block_num = self._prob.get_stats()["block-num"]
-        # allowed_min_x = 0 + 28 * cur_block_num
-        # allowed_max_x = allowed_min_x + 27
-
-        # if allowed_max_x <= action[2] and action[2] <= allowed_max_x:
-        #     # action is valid
-        #     # 1. Make a change
-        #     change, x, y = self._rep.update(action)
-
-        #     # 2. Calculate the new reward
-        #     print("Rep Map: ", self._rep._map)
-        #     reward = self._prob.get_reward(self._rep._map)
-
-        # else:
-        #     # action is not valid
-        #     pass
-
-
         self._iteration += 1
-        #save copy of the old stats to calculate the reward
-        old_stats = self._rep_stats
-        # update the current state to the new state based on the taken action
-        # if self._prob_str == "smb":
-        change, x, y = self._rep.update(action)
-        
-        # if change > 0:
-        #     self._changes += change
-        #     self._heatmap[y][x] += 1.0
-        #     self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
 
-        # calculate the values
+        change, x, y = self._rep.update(action)
+        reward = self._prob.get_reward(map=self._rep._map, iterations=self._iteration)
+        
+        if change > 0:
+            self._changes += change
+
         observation = self._rep.get_observation()
 
-            
-        done = False
-        # done = self._prob.get_episode_over(self._rep_stats,old_stats) or self._changes >= self._max_changes or self._iteration >= self._max_iterations
+        done = self._prob.get_episode_over()
+
         info = {}
         info["iterations"] = self._iteration
+        info["changes"] = self._changes
         
-        #return the values
         return observation, reward, done, info
 
     """

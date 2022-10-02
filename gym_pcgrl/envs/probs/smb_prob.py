@@ -19,8 +19,13 @@ rootpath = os.path.abspath(os.path.dirname(__file__)) + "/"
 class SMBProblem(Problem):
     def __init__(self):
         super().__init__()
+
+        # Need this for now to pass in to the reset method
+        self._prob = {"empty":0.75, "solid":0.1, "enemy":0.01, "brick":0.04, "question":0.01, "coin":0.02, "tube": 0.02}
+
         self._width = 140 # original = 114; the width does not include the left 3 cols and right 3 cols
         self._height = 14
+        self._total_num_of_tiles = self._width * self._height
         
         self._border_size = (3, 0)
 
@@ -28,16 +33,32 @@ class SMBProblem(Problem):
         self.nz = 32
         self.generator = Generator(random.randint(1, 10000000))
         self.repairer = Repairer(0) # passing in cuda_id=0 for only cpu
-        self._start_block_num = 1
-        self._end_block_num = 5
-        self._cur_block_num = 1 # to tell which block iteration is on
+
+        self.novel_k = 4
 
         self.win_h, self.win_w = 14, 28
+        self._num_of_tiles_per_block = self.win_h * self.win_w
         self.sy, self.sx = 14, 7
         self.ny, self.nx = 0, 3
 
-        self.F_que = deque(maxlen=1000)
-        self.H_que = deque(maxlen=1000)
+        self._start_block_num = 1
+        self._cur_block_num = self._start_block_num # to tell which block iteration is on
+
+        # take one block from the total since we are not changing the very first initial block
+        remaining_tiles = self._total_num_of_tiles - self._num_of_tiles_per_block
+        # calculate the end block number
+        self._end_block_num = remaining_tiles//self._num_of_tiles_per_block
+
+        # termination condition
+        self._last_iteration = remaining_tiles
+
+        # print("Number of tiles per block: ", self._num_of_tiles_per_block)
+        # print("End Block: ", self._end_block_num )
+        # print("Last iteration: ", self._last_iteration)
+        
+        self.F_que = deque(maxlen=self._total_num_of_tiles)
+        self.H_que = deque(maxlen=self._total_num_of_tiles)
+        self.pop = deque(maxlen=self._total_num_of_tiles)
 
 
     def reset(self, start_stats):
@@ -159,6 +180,7 @@ class SMBProblem(Problem):
 
         # Keep generate the initial block till it's playable
         while not playable:
+            print("Generating the initial block...")
             if self.initial_state != None:
                 self.state = self.initial_state
             else:
@@ -177,14 +199,11 @@ class SMBProblem(Problem):
             print("Initial Block Completion Rate: ", completion_rate)
             if completion_rate == 1.0:
                 playable = True
-            else:
-                pass
+            
+        print("--------------------------------")
 
         self.convertMP2PCGRL_num(new_piece)
-
-        # print("Initial Block")
-        # print(new_piece)
-
+        
         map[:, :self.win_w] = new_piece
 
     # This method is to repair a block after the representation finishes updating the working block.
@@ -195,7 +214,7 @@ class SMBProblem(Problem):
 
         # First, need to convert the num tiles to str tiles in PCG-RL, since some tiles like tubes are not distinguishable
         # Then, convert the pcg-rl str tiles to mariopuzzle num-tiles
-        new_map = self._convert_num_to_str_tiles(get_string_map(map, self.get_tile_types()))
+        new_map = self.convertPCGRL_num2PCGRL_str(get_string_map(map, self.get_tile_types()))
         new_map = np.array(new_map)
 
         # convert the pcg-rl str tiles to mariopuzzle num-tiles
@@ -209,7 +228,7 @@ class SMBProblem(Problem):
         super().adjust_param(**kwargs)
 
     # Converts PCGRL num tiles to PCGRL str tiles
-    def _convert_num_to_str_tiles(self, map):
+    def convertPCGRL_num2PCGRL_str(self, map):
         new_map = []
 
         for y in range(len(map)):
@@ -284,28 +303,17 @@ class SMBProblem(Problem):
 
         return map_stats
 
-    def get_block_num(self, iterations):
-        # number of tiles in a block
-        num_of_tiles = self.win_h * self.win_w 
+    def get_cur_block_num(self, iterations):
+        for i in range(self._end_block_num + 1):
+            if (self._num_of_tiles_per_block * i) + 1 <= iterations and iterations <= self._num_of_tiles_per_block * (i + 1):
+                return i+1
 
-        # calculate the max number of block using the map's width
-        # and use the max block to get the current block num with the number of iterations
+    def get_reward(self, new_stats=None, old_stats=None, map=None, iterations=0):
+        self.current_iteration = iterations
+    
+        reward = 0
 
-        if 1 <= iterations and iterations <= num_of_tiles:
-            return 1
-        elif num_of_tiles + 1 <= iterations and iterations <= num_of_tiles * 2:
-            return 2
-        elif 1 <= iterations * 2 + 1 and iterations <= num_of_tiles * 3:
-            return 3
-        elif 1 <= iterations * 3 + 1 and iterations <= num_of_tiles * 4:
-            return 4
-
-
-    def get_reward(self, new_stats=None, old_stats=None, map=None, iterations=0): 
-
-        reward, done = 0, False
-
-
+        self._cur_block_num = self.get_cur_block_num(self.current_iteration)
 
         # Calculate the X start position based on the current block number
         now_x = 0 + self.win_w * self._cur_block_num
@@ -315,35 +323,54 @@ class SMBProblem(Problem):
         # Then, convert the pcg-rl str tiles to mariopuzzle num-tiles
 
         # Convert the pcg-rl num tiles to str tiles
-        new_map = self._convert_num_to_str_tiles(get_string_map(map, self.get_tile_types()))
-        new_map = np.array(new_map)
+        new_map = self.convertPCGRL_num2PCGRL_str(get_string_map(map, self.get_tile_types()))
 
         # convert the pcg-rl str tiles to mariopuzzle num-tiles
         self.convertPCGRL_str2MP_num(new_map)
-        # print(new_map)
+
+        # convert to numpy array for easier index slicing
+        new_map = np.array(new_map)
+
+        # run the Mario-AI framework
         self.saveLevelAsText(new_map[:, max(0, now_x-3*self.win_w): now_x+self.win_w], rootpath + "mario_current_map")
         subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
-        completion_rate = self.readMarioAIResultFile(rootpath + "\mario_result.txt")
-        reward += completion_rate
-        print("completion rate: ", completion_rate)
+        self.completion_rate = self.readMarioAIResultFile(rootpath + "\mario_result.txt")
+        reward += self.completion_rate
+        # print("completion rate: ", self.completion_rate)
 
+        # for the map, use the originally passed in map
         # calculate the diversity
         kl_val = KLWithSlideWindow(
-            self.lv, (0, now_x, self.win_h, self.win_w), self.sx, self.nx, self.sy, self.ny)
+            map, (0, now_x, self.win_h, self.win_w), self.sx, self.nx, self.sy, self.ny)
         
+        # print("kl_val: ", kl_val)
+        # print("self.kl_fn(kl_val): ", self.kl_fn(kl_val))
+
         # need to clear the F_que when we move to the next block section
         # calculate fun 
         rew_F = self.add_then_norm(self.kl_fn(kl_val), self.F_que)
+        # print("rew_F: ", rew_F)
         reward += rew_F
 
         # calculate historical deviation
-        piece_map = lv2Map(new_map[:, now_x : now_x + self.win_w])
+        piece_map = lv2Map(map[:, now_x : now_x + self.win_w])
         novelty = self.cal_novelty(piece_map)
         rew_H = self.add_then_norm(novelty, self.H_que)
+        # print("rew_H: ", rew_H)
         reward += rew_H
-        
+
         #calculate the total reward
         return reward
+
+    # Fun reward function
+    # lower bound = 0.26
+    # upper bound = 0.94
+    def kl_fn(self, val):
+        if (val < 0.26):
+            return -(val-0.26)**2
+        if (val > 0.94):
+            return -(val-0.94)**2
+        return 0
 
     def cal_novelty(self, piece):
         score = []
@@ -351,8 +378,8 @@ class SMBProblem(Problem):
             score.append(calKLFromMap(x, piece))
         score.sort()
         sum = 0
-        # novel_k = 10
-        # only consider top 10 most similar blocks
+        # novel_k = 4
+        # only consider top 4 most similar blocks
         siz = min(len(score), self.novel_k)
         for i in range(siz):
             sum += score[i]
@@ -361,8 +388,6 @@ class SMBProblem(Problem):
         return sum
 
     def add_then_norm(self, value, history):
-        if not self.norm:
-            return value
         history.append(value)
         maxv = max(history)
         minv = min(history)
@@ -371,20 +396,9 @@ class SMBProblem(Problem):
         else:
             return (value-minv)/(maxv-minv)
     
-    def get_episode_over(self, new_stats, old_stats):
-        return new_stats["dist-win"] <= 0
+    def get_episode_over(self, new_stats=None, old_stat=None):
+        return self.completion_rate < 1.0 or self.current_iteration == self._last_iteration
 
-    def get_debug_info(self, new_stats, old_stats):
-        return {
-            "dist-floor": new_stats["dist-floor"],
-            "disjoint-tubes": new_stats["disjoint-tubes"],
-            "enemies": new_stats["enemies"],
-            "empty": new_stats["empty"],
-            "noise": new_stats["noise"],
-            "jumps": new_stats["jumps"],
-            "jumps-dist": new_stats["jumps-dist"],
-            "dist-win": new_stats["dist-win"]
-        }
 
     def render(self, map):
         new_map = self._get_runnable_lvl(map)

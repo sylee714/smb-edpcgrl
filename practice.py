@@ -72,26 +72,27 @@ if __name__ == '__main__':
 
 # --------------------------------
 
+# Only use with Snake Rep
 env = gym.make('smb-snake-v0')
 
 # Observation and action space 
 obs_space = env.observation_space
 action_space = env.action_space
-print("The observation space: {}".format(obs_space))
-print("The action space: {}".format(action_space))
+# print("The observation space: {}".format(obs_space))
+# print("The action space: {}".format(action_space))
 
 obs = env.reset()
-for t in range(1000):
+for t in range(20):
     action = env.action_space.sample()
-    # print("action: ", action)
-    # print("action type: ", type(action))
-    obs, reward, done, info = env.step(env.action_space.sample()) # [0, 0, 2]
-    # print("obs: ", obs)
+    obs, reward, done, info = env.step(env.action_space.sample())
+    print("info: ", info)
+    print("reward: ", reward)
+    print("------------------------------------")
     env.render('human')
-    time.sleep(0.25)
-    # if done:
-    #     print("Episode finished after {} timesteps".format(t+1))
-    #     break
+    # time.sleep(0.25)
+    if done:
+        print("Episode finished after {} timesteps".format(t+1))
+        break
 
 
 
