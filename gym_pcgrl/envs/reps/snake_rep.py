@@ -19,7 +19,7 @@ class SnakeRepresentation(Representation):
     def __init__(self):
         super().__init__()
         self._x = 28
-        self._y = 0
+        self._y = 13
         self._iteration = 0
 
     """
@@ -48,7 +48,7 @@ class SnakeRepresentation(Representation):
     def reset(self, width, height, prob, win_width=0, win_height=0):
         super().reset(width, height, prob)
         self._x = 28
-        self._y = 0
+        self._y = 13
         self._iteration = 0
 
         self._width = width
@@ -57,12 +57,13 @@ class SnakeRepresentation(Representation):
         self._win_width = win_width
         self._win_height = win_height
 
-        self._down_point_list = []
+        self._up_point_list = []
+        # need to change the logic to find the up points not down points
         for i in range(height):
             if i % 2 == 0:
-                self._down_point_list.append((win_width-1, i))
+                self._up_point_list.append((0, i))
             else:
-                self._down_point_list.append((0, i))
+                self._up_point_list.append((win_width-1, i))
 
     """
     Get the observation space used by the narrow representation
@@ -114,22 +115,24 @@ class SnakeRepresentation(Representation):
         
         # Update the x and y
         # Check if it reached the end point of the last block
-        if self._x != self._width - self._win_width or self._y != self._height - 1:
-            # If it reached the end point, then move to the next block
-            if self._x % self._win_width == 0 and self._y % self._win_height == self._win_height - 1:
-                self._y = 0
+        # if self._x != self._width - self._win_width or self._y != self._height - 1:
+        if self._x != self._width - self._win_width or self._y != 0:
+            # If it reached the end point of the current block, then move to the next block
+            # if self._x % self._win_width == 0 and self._y % self._win_height == self._win_height - 1:
+            if self._x % self._win_width == 0 and self._y % self._win_height == 0:
+                self._y = 13
                 self._x += self._win_width
             else:
-                # if it's a down point, then move down
-                if (self._x % self._win_width, self._y % self._win_height) in self._down_point_list:
-                    self._y += 1
+                # if it's a up point, then move up
+                if (self._x % self._win_width, self._y % self._win_height) in self._up_point_list:
+                    self._y -= 1
                 else:
-                    # move to right
-                    if self._y % 2 == 0:
-                        self._x += 1
                     # move to left
-                    else:
+                    if self._y % 2 == 0:
                         self._x -= 1
+                    # move to right
+                    else:
+                        self._x += 1
 
         return change, self._x, self._y
 

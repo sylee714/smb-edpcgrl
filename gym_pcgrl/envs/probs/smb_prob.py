@@ -175,9 +175,14 @@ class SMBProblem(Problem):
         f = open(path, "r")
         return float(f.read())
 
+    # modify this method to initialize all the blocks
     def update_rep_map_with_init_block(self, map):
-        playable = False
+        # add 3 cols at the start for Super Mario
+        # add 3 cols at the end for the finish pole
+        
+        # need to generate 5 blocks in total
 
+        playable = False
         # Keep generate the initial block till it's playable
         while not playable:
             print("Generating the initial block...")
@@ -332,11 +337,12 @@ class SMBProblem(Problem):
         new_map = np.array(new_map)
 
         # run the Mario-AI framework
-        self.saveLevelAsText(new_map[:, max(0, now_x-3*self.win_w): now_x+self.win_w], rootpath + "mario_current_map")
-        subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
-        self.completion_rate = self.readMarioAIResultFile(rootpath + "\mario_result.txt")
-        reward += self.completion_rate
+        # self.saveLevelAsText(new_map[:, max(0, now_x-3*self.win_w): now_x+self.win_w], rootpath + "mario_current_map")
+        # subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
+        # self.completion_rate = self.readMarioAIResultFile(rootpath + "\mario_result.txt")
+        # reward += self.completion_rate
         # print("completion rate: ", self.completion_rate)
+        self.completion_rate = 0
 
         # for the map, use the originally passed in map
         # calculate the diversity
