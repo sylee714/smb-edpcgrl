@@ -82,14 +82,14 @@ action_space = env.action_space
 # print("The action space: {}".format(action_space))
 
 obs = env.reset()
-for t in range(2000):
+for t in range(100):
     action = env.action_space.sample()
     obs, reward, done, info = env.step(env.action_space.sample())
     print("info: ", info)
     print("reward: ", reward)
     print("------------------------------------")
     env.render('human')
-    # time.sleep(0.25)
+    time.sleep(0.25)
     # if done:
     #     print("Episode finished after {} timesteps".format(t+1))
     #     break

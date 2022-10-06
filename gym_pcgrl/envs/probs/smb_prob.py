@@ -179,37 +179,44 @@ class SMBProblem(Problem):
     def update_rep_map_with_init_block(self, map):
         # add 3 cols at the start for Super Mario
         # add 3 cols at the end for the finish pole
+
+        temp_map = np.zeros([self._height, self._width], dtype = int)
         
         # need to generate 5 blocks in total
-
-        playable = False
-        # Keep generate the initial block till it's playable
-        while not playable:
-            print("Generating the initial block...")
-            if self.initial_state != None:
-                self.state = self.initial_state
-            else:
-                self.state = self.sample_random_vector(self.nz)
-
-            st = time.time()
-            piece = self.generator.generate(self.state)
-            st = time.time()
-            new_piece = self.repairer.repair(piece)
-
-            # Pass in the generated piece to the Mario AI to check
-            # if the new piece is playable
-            self.saveLevelAsText(new_piece, rootpath + "mario_current_map")
-            subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
-            completion_rate = self.readMarioAIResultFile(rootpath + "\mario_result.txt")
-            print("Initial Block Completion Rate: ", completion_rate)
-            if completion_rate == 1.0:
-                playable = True
+        for i in range(int(self._width / self.win_w)):
             
-        print("--------------------------------")
+            playable = False
 
-        self.convertMP2PCGRL_num(new_piece)
+            print("Generating block ", i)
+            # Keep generate the block till it's playable
+            while not playable:
+                if self.initial_state != None:
+                    self.state = self.initial_state
+                else:
+                    self.state = self.sample_random_vector(self.nz)
+
+                st = time.time()
+                piece = self.generator.generate(self.state)
+                st = time.time()
+                new_piece = self.repairer.repair(piece)
+
+                # Copy the new piece to the temp map
+                temp_map[:, i * 28 : (i + 1) * 28] = new_piece
+
+                # Pass in the generated piece to the Mario AI to check
+                # if the new piece is playable
+                self.saveLevelAsText(temp_map[: , : (i + 1) * 28], rootpath + "mario_current_map")
+                subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
+                completion_rate = self.readMarioAIResultFile(rootpath + "mario_result.txt")
+                print("Block {} Completion Rate: {}".format(i, completion_rate))
+                if completion_rate == 1.0:
+                    playable = True
+                
+            print("--------------------------------")
+
+        self.convertMP2PCGRL_num(temp_map)
         
-        map[:, :self.win_w] = new_piece
+        map[:, :] = temp_map[:, :]
 
     # This method is to repair a block after the representation finishes updating the working block.
     def repair_block(self, map, block_num):
