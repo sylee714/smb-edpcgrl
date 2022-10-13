@@ -20,6 +20,26 @@ class SMBProblem(Problem):
     def __init__(self):
         super().__init__()
 
+        # -----PCGRL Reward Method-----
+        self._solver_power = 10000
+
+        self._min_empty = 1100
+        self._min_enemies = 12
+        self._max_enemies = 37
+        self._min_jumps = 25
+
+        self._rewards = {
+            "dist-floor": 2,
+            "disjoint-tubes": 1,
+            "enemies": 1,
+            "empty": 1,
+            "noise": 4,
+            "jumps": 2,
+            "jumps-dist": 2,
+            "dist-win": 5
+        }
+        # -----PCGRL Reward Method-----
+
         # Need this for now to pass in to the reset method
         self._prob = {"empty":0.75, "solid":0.1, "enemy":0.01, "brick":0.04, "question":0.01, "coin":0.02, "tube": 0.02}
 
@@ -176,9 +196,9 @@ class SMBProblem(Problem):
         return float(f.read())
 
     # modify this method to initialize all the blocks
-    def update_rep_map_with_init_block(self, map):
-        # add 3 cols at the start for Super Mario
-        # add 3 cols at the end for the finish pole
+    def init_map(self, map):
+        # add 3 cols at the start for Super Mario ?
+        # add 3 cols at the end for the finish pole ?
 
         temp_map = np.zeros([self._height, self._width], dtype = int)
         
@@ -238,6 +258,19 @@ class SMBProblem(Problem):
 
     def adjust_param(self, **kwargs):
         super().adjust_param(**kwargs)
+
+        # -----PCGRL Reward Method-----
+        self._min_empty = kwargs.get('min_empty', self._min_empty)
+        self._min_enemies = kwargs.get('min_enemies', self._min_enemies)
+        self._max_enemies = kwargs.get('max_enemies', self._max_enemies)
+        self._min_jumps = kwargs.get('min_jumps', self._min_jumps)
+
+        rewards = kwargs.get('rewards')
+        if rewards is not None:
+            for t in rewards:
+                if t in self._rewards:
+                    self._rewards[t] = rewards[t]
+        # -----PCGRL Reward Method-----
 
     # Converts PCGRL num tiles to PCGRL str tiles
     def convertPCGRL_num2PCGRL_str(self, map):
@@ -308,10 +341,79 @@ class SMBProblem(Problem):
 
         return new_map
 
+    def _run_game(self, map):
+        gameCharacters=" # ## #"
+        string_to_char = dict((s, gameCharacters[i]) for i, s in enumerate(self.get_tile_types()))
+        lvlString = ""
+        for i in range(len(map)):
+            if i < self._height - 3:
+                lvlString += "   "
+            elif i == self._height - 3:
+                lvlString += " @ "
+            else:
+                lvlString += "###"
+            for j in range(len(map[i])):
+                string = map[i][j]
+                lvlString += string_to_char[string]
+            if i < self._height - 3:
+                lvlString += " | "
+            elif i == self._height - 3:
+                lvlString += " # "
+            else:
+                lvlString += "###"
+            lvlString += "\n"
+
+        state = State()
+        state.stringInitialize(lvlString.split("\n"))
+
+        aStarAgent = AStarAgent()
+
+        sol,solState,iters = aStarAgent.getSolution(state, 1, self._solver_power)
+        if solState.checkWin():
+            return 0, solState.getGameStatus()
+        sol,solState,iters = aStarAgent.getSolution(state, 0, self._solver_power)
+        if solState.checkWin():
+            return 0, solState.getGameStatus()
+
+        return solState.getHeuristic(), solState.getGameStatus()
+
+    # Computed the current stats of the map
     def get_stats(self, map=None):
         map_stats = {
             "block-num": self._cur_block_num
         }
+
+        # convert to numpy for easy slicing
+        new_map = np.array(map)
+
+        # Consider the whole map?
+        # or only the certain blocks based on the number of iterations
+        # if we consider only the certain blocks based on the number of iterations,
+        # dynamically calculate the min and max numbers of the empty tiles and the enemy tiles.
+        # Then, we also need a logtic to convert "self._cur_block_num" to valid indices. 
+        # Ex. map[:, : cur_block * win_w + win_w] 
+        # -----PCGRL Reward Method-----
+        map_locations = get_tile_locations(new_map[:, : self._cur_block_num * self.win_w + self.win_w], self.get_tile_types())
+        map_stats = {
+            "dist-floor": get_floor_dist(new_map[:, : self._cur_block_num * self.win_w + self.win_w], ["enemy"], ["solid", "brick", "question", "tube_left", "tube_right"]),
+            "disjoint-tubes": get_type_grouping(new_map[:, : self._cur_block_num * self.win_w + self.win_w], ["tube"], [(-1,0),(1,0)],1,1),
+            "enemies": calc_certain_tile(map_locations, ["enemy"]),
+            "empty": calc_certain_tile(map_locations, ["empty"]),
+            "noise": get_changes(new_map[:, : self._cur_block_num * self.win_w + self.win_w], False) + get_changes(new_map[:, : self._cur_block_num * self.win_w + self.win_w], True),
+            "jumps": 0,
+            "jumps-dist": 0,
+            "dist-win": 0
+        }
+        map_stats["dist-win"], play_stats = self._run_game(new_map[:, : self._cur_block_num * self.win_w + self.win_w])
+        map_stats["jumps"] = play_stats["jumps"]
+        prev_jump = 0
+        value = 0
+        for l in play_stats["jump_locs"]:
+            value = max(value, l[0] - prev_jump)
+            prev_jump = l[0]
+        value = max(value, self._width - prev_jump)
+        map_stats["jumps-dist"] = value
+        # -----PCGRL Reward Method-----
 
         return map_stats
 
@@ -320,7 +422,9 @@ class SMBProblem(Problem):
             if (self._num_of_tiles_per_block * i) + 1 <= iterations and iterations <= self._num_of_tiles_per_block * (i + 1):
                 return i+1
 
+    # Computes the reward value
     def get_reward(self, new_stats=None, old_stats=None, map=None, iterations=0):
+        # -----ED-PCGRL Reward Method-----
         self.current_iteration = iterations
     
         reward = 0
@@ -347,9 +451,9 @@ class SMBProblem(Problem):
         # self.saveLevelAsText(new_map[:, max(0, now_x-3*self.win_w): now_x+self.win_w], rootpath + "mario_current_map")
         # subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
         # self.completion_rate = self.readMarioAIResultFile(rootpath + "\mario_result.txt")
-        # reward += self.completion_rate
         # print("completion rate: ", self.completion_rate)
-        self.completion_rate = 0
+        self.completion_rate = 1
+        reward += self.completion_rate
 
         # for the map, use the originally passed in map
         # calculate the diversity
@@ -362,6 +466,7 @@ class SMBProblem(Problem):
         # need to clear the F_que when we move to the next block section
         # calculate fun 
         rew_F = self.add_then_norm(self.kl_fn(kl_val), self.F_que)
+        self._rew_F = rew_F
         # print("rew_F: ", rew_F)
         reward += rew_F
 
@@ -369,11 +474,39 @@ class SMBProblem(Problem):
         piece_map = lv2Map(map[:, now_x : now_x + self.win_w])
         novelty = self.cal_novelty(piece_map)
         rew_H = self.add_then_norm(novelty, self.H_que)
+        self._rew_H = rew_H
         # print("rew_H: ", rew_H)
         reward += rew_H
 
-        #calculate the total reward
-        return reward
+        # -----ED-PCGRL Reward Method-----
+
+        # To dynamically change the min and max of empty and enemy tiles 
+        # based on the current block number
+        ratio = self._cur_block_num / (self._end_block_num + 1)
+
+        # -----PCGRL Reward Method-----
+        # longer path is rewarded and less number of regions is rewarded
+        rewards = {
+            "dist-floor": get_range_reward(new_stats["dist-floor"], old_stats["dist-floor"], 0, 0),
+            "disjoint-tubes": get_range_reward(new_stats["disjoint-tubes"], old_stats["disjoint-tubes"], 0, 0),
+            "enemies": get_range_reward(new_stats["enemies"], old_stats["enemies"], int(self._min_enemies * ratio), int(self._max_enemies * ratio)),
+            "empty": get_range_reward(new_stats["empty"], old_stats["empty"], int(self._min_empty * ratio), np.inf),
+            "noise": get_range_reward(new_stats["noise"], old_stats["noise"], 0, 0),
+            "jumps": get_range_reward(new_stats["jumps"], old_stats["jumps"], int(self._min_jumps * ratio), np.inf),
+            "jumps-dist": get_range_reward(new_stats["jumps-dist"], old_stats["jumps-dist"], 0, 0),
+            "dist-win": get_range_reward(new_stats["dist-win"], old_stats["dist-win"], 0, 0)
+        }
+
+        # #calculate the total reward
+        return reward + rewards["dist-floor"] * self._rewards["dist-floor"] +\
+            rewards["disjoint-tubes"] * self._rewards["disjoint-tubes"] +\
+            rewards["enemies"] * self._rewards["enemies"] +\
+            rewards["empty"] * self._rewards["empty"] +\
+            rewards["noise"] * self._rewards["noise"] +\
+            rewards["jumps"] * self._rewards["jumps"] +\
+            rewards["jumps-dist"] * self._rewards["jumps-dist"] +\
+            rewards["dist-win"] * self._rewards["dist-win"]
+        # -----PCGRL Reward Method-----
 
     # Fun reward function
     # lower bound = 0.26
@@ -412,6 +545,19 @@ class SMBProblem(Problem):
     def get_episode_over(self, new_stats=None, old_stat=None):
         return self.completion_rate < 1.0 or self.current_iteration == self._last_iteration
 
+    def get_debug_info(self, new_stats, old_stats):
+        return {
+            "dist-floor": new_stats["dist-floor"],
+            "disjoint-tubes": new_stats["disjoint-tubes"],
+            "enemies": new_stats["enemies"],
+            "empty": new_stats["empty"],
+            "noise": new_stats["noise"],
+            "jumps": new_stats["jumps"],
+            "jumps-dist": new_stats["jumps-dist"],
+            "dist-win": new_stats["dist-win"],
+            "rew_F": self._rew_F,
+            "rew_H": self._rew_H 
+        }
 
     def render(self, map):
         new_map = self._get_runnable_lvl(map)

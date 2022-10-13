@@ -6,10 +6,13 @@ from model import FullyConvPolicyBigMap, FullyConvPolicySmallMap, CustomPolicyBi
 from utils import get_exp_name, max_exp_idx, load_model, make_vec_envs
 from stable_baselines import PPO2
 from stable_baselines.results_plotter import load_results, ts2xy
+from gym_pcgrl.envs.probs.MarioLevelRepairer.CNet.model import CNet
 
 import tensorflow as tf
 import numpy as np
 import os
+
+import time 
 
 n_steps = 0
 log_dir = './'
@@ -56,11 +59,14 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
         policy = FullyConvPolicyBigMap
         if game == "sokoban":
             policy = FullyConvPolicySmallMap
+
+    # For Snake Represenation, use CustomPolicyBigMap, don't know the reason
     else:
         policy = CustomPolicyBigMap
         if game == "sokoban":
             policy = CustomPolicySmallMap
-    if game == "binary":
+
+    if game == "binary" or game == "smb":
         kwargs['cropped_size'] = 28
     elif game == "zelda":
         kwargs['cropped_size'] = 22
@@ -83,24 +89,47 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
     used_dir = log_dir
     if not logging:
         used_dir = None
+    print("Before env")
     env = make_vec_envs(env_name, representation, log_dir, n_cpu, **kwargs)
-    if not resume or model is None:
-        model = PPO2(policy, env, verbose=1, tensorboard_log="./runs")
-    else:
-        model.set_env(env)
-    if not logging:
-        model.learn(total_timesteps=int(steps), tb_log_name=exp_name)
-    else:
-        model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback)
+    # check_env(env)
+    print("Before model")
+    model = PPO2(policy, env, verbose=1, tensorboard_log="./runs")
+
+    print("Before model learn")
+    model.learn(total_timesteps=int(steps), tb_log_name=exp_name)
+    # model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback)
+    # model.save(f"{models_dir}/{TIMESTEPS*iters}")
+
+    episodes = 1000
+
+    print("Before running episodes")
+    for ep in range(episodes):
+        obs = env.reset()
+        done = False
+        while not done:
+            action, _states = model.predict(obs)
+            obs, rewards, done, info = env.step(action)
+            env.render()
+            # time.sleep(10)
+            print(rewards)
+
+    # if not resume or model is None:
+    #     model = PPO2(policy, env, verbose=1, tensorboard_log="./runs")
+    # else:
+    #     model.set_env(env)
+    # if not logging:
+    #     model.learn(total_timesteps=int(steps), tb_log_name=exp_name)
+    # else:
+    #     model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback)
 
 ################################## MAIN ########################################
-game = 'binary'
-representation = 'narrow'
+game = 'smb'
+representation = 'snake'
 experiment = None
-steps = 1e8
+steps = 10000
 render = False
 logging = True
-n_cpu = 50
+n_cpu = 1
 kwargs = {
     'resume': False
 }

@@ -2,6 +2,7 @@ import gym
 import gym_pcgrl
 import time 
 import numpy as np
+from stable_baselines.common.env_checker import check_env
 
 # https://www.youtube.com/watch?v=dLP-2Y6yu70&ab_channel=sentdex
 if __name__ == '__main__':
@@ -75,14 +76,15 @@ if __name__ == '__main__':
 # Only use with Snake Rep
 env = gym.make('smb-snake-v0')
 
+
 # Observation and action space 
 obs_space = env.observation_space
 action_space = env.action_space
-# print("The observation space: {}".format(obs_space))
-# print("The action space: {}".format(action_space))
+print("The observation space: {}".format(obs_space))
+print("The action space: {}".format(action_space))
 
 obs = env.reset()
-for t in range(100):
+for t in range(1000):
     action = env.action_space.sample()
     obs, reward, done, info = env.step(env.action_space.sample())
     print("info: ", info)
