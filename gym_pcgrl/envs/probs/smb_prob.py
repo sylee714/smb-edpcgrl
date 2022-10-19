@@ -226,7 +226,7 @@ class SMBProblem(Problem):
                 # Pass in the generated piece to the Mario AI to check
                 # if the new piece is playable
                 self.saveLevelAsText(temp_map[: , : (i + 1) * 28], rootpath + "mario_current_map")
-                subprocess.call(['srun java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
+                subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
                 completion_rate = self.readMarioAIResultFile(rootpath + "mario_result.txt")
                 print("Block {} Completion Rate: {}".format(i, completion_rate))
                 if completion_rate == 1.0:
@@ -452,7 +452,7 @@ class SMBProblem(Problem):
 
         # run the Mario-AI framework
         self.saveLevelAsText(new_map[:, max(0, now_x-3*self.win_w): now_x+self.win_w], rootpath + "mario_current_map")
-        subprocess.call(['srun java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
+        subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
         self.completion_rate = self.readMarioAIResultFile(rootpath + "\mario_result.txt")
         reward += self.completion_rate
 
