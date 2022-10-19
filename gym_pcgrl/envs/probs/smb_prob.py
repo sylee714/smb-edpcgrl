@@ -193,7 +193,9 @@ class SMBProblem(Problem):
 
     def readMarioAIResultFile(self, path):
         f = open(path, "r")
-        return float(f.read())
+        content = f.read()
+        print(content)
+        return float(content)
 
     # modify this method to initialize all the blocks
     def init_map(self, map):
