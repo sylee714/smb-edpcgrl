@@ -80,7 +80,6 @@ class SMBProblem(Problem):
         # self.H_que = deque(maxlen=self._total_num_of_tiles)
         self.history_stack = deque(maxlen=(self.novel_k + 1))
 
-
     def reset(self, start_stats):
         super().reset(start_stats)
         self._cur_block_num = self._start_block_num # to tell which block iteration is on
@@ -191,16 +190,36 @@ class SMBProblem(Problem):
                     str+=map2[level[i][j]]
                 f.write(str+'\n')
 
+    # Reads the file that has completion rate after running Mario AI Framework.
     def readMarioAIResultFile(self, path):
         f = open(path, "r")
         content = f.read()
-        print(content)
+        
         return float(content)
+
+    # Adds the start and end point to Mario Puzzle Map to match the PCGRL's map
+    def addStartEndPoints(self, map):
+        start_point = np.zeros([self._height, 3],dtype = int)
+
+        for row in range(len(start_point)):
+            for col in range(len(start_point[row])):
+                if row == len(start_point) - 1 or row == len(start_point) - 2:
+                    start_point[row, col] = 0
+                else:
+                    start_point[row, col] = 2
+
+        end_point = np.zeros([self._height, 3],dtype = int)
+        for row in range(len(end_point)):
+            for col in range(len(end_point[row])):
+                if row == len(end_point) - 1 or row == len(end_point) - 2:
+                    end_point[row, col] = 0
+                else:
+                    end_point[row, col] = 2
+
+        return np.concatenate((start_point, map, end_point), axis=1)
 
     # modify this method to initialize all the blocks
     def init_map(self, map):
-        # add 3 cols at the start for Super Mario ?
-        # add 3 cols at the end for the finish pole ?
 
         temp_map = np.zeros([self._height, self._width], dtype = int)
         
@@ -227,7 +246,10 @@ class SMBProblem(Problem):
 
                 # Pass in the generated piece to the Mario AI to check
                 # if the new piece is playable
-                self.saveLevelAsText(temp_map[: , : (i + 1) * 28], rootpath + "mario_current_map")
+                full_map = self.addStartEndPoints(temp_map[: , : (i + 1) * 28])
+                
+                # self.saveLevelAsText(temp_map[: , : (i + 1) * 28], rootpath + "mario_current_map")
+                self.saveLevelAsText(full_map, rootpath + "mario_current_map")
                 subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
                 completion_rate = self.readMarioAIResultFile(rootpath + "mario_result.txt")
                 print("Block {} Completion Rate: {}".format(i, completion_rate))
@@ -454,7 +476,9 @@ class SMBProblem(Problem):
         new_map = np.array(new_map)
 
         # run the Mario-AI framework
-        self.saveLevelAsText(new_map[:, max(0, now_x-3*self.win_w): now_x+self.win_w], rootpath + "mario_current_map")
+        full_map = self.addStartEndPoints(new_map[:, max(0, now_x-3*self.win_w): now_x+self.win_w])
+        # self.saveLevelAsText(new_map[:, max(0, now_x-3*self.win_w): now_x+self.win_w], rootpath + "mario_current_map")
+        self.saveLevelAsText(full_map, rootpath + "mario_current_map")
         subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
         self.completion_rate = self.readMarioAIResultFile(rootpath + "mario_result.txt")
         reward += self.completion_rate

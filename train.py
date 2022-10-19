@@ -26,27 +26,27 @@ def callback(_locals, _globals):
     """
     global n_steps, best_mean_reward
     # Print stats every 1000 calls
-    if (n_steps + 1) % 10 == 0:
-        x, y = ts2xy(load_results(log_dir), 'timesteps')
-        if len(x) > 100:
-           #pdb.set_trace()
-            mean_reward = np.mean(y[-100:])
-            print(x[-1], 'timesteps')
-            print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))
+    # if (n_steps + 1) % 10 == 0:
+    x, y = ts2xy(load_results(log_dir), 'timesteps')
+    if len(x) > 0:
+        #pdb.set_trace()
+        mean_reward = np.mean(y[-100:])
+        print(x[-1], 'timesteps')
+        print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))
 
-            # New best model, we save the agent here
-            if mean_reward > best_mean_reward:
-                best_mean_reward = mean_reward
-                # Example for saving best model
-                print("Saving new best model")
-                _locals['self'].save(os.path.join(log_dir, 'best_model.pkl'))
-            else:
-                print("Saving latest model")
-                _locals['self'].save(os.path.join(log_dir, 'latest_model.pkl'))
+        # New best model, we save the agent here
+        if mean_reward > best_mean_reward:
+            best_mean_reward = mean_reward
+            # Example for saving best model
+            print("Saving new best model")
+            _locals['self'].save(os.path.join(log_dir, 'best_model.pkl'))
         else:
-            print('{} monitor entries'.format(len(x)))
-            pass
-    n_steps += 1
+            print("Saving latest model")
+            _locals['self'].save(os.path.join(log_dir, 'latest_model.pkl'))
+    # else:
+    #     print('{} monitor entries'.format(len(x)))
+    #     pass
+    # n_steps += 1
     # Returning False will stop training early
     return True
 
@@ -139,7 +139,9 @@ experiment = None
 steps = 1e7
 render = False
 logging = True
-n_cpu = 2 # number of cpu cores; this should not exceed the number cpu cores of PC
+# for this smb and snanke, only use 1 core. Because if we use more than 1 core,
+# we get multiple environments and they try to read/modify the same file.
+n_cpu = 1 # number of cpu cores; this should not exceed the number cpu cores of PC
 kwargs = {
     'resume': False
 }

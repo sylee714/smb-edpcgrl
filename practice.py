@@ -89,7 +89,7 @@ for t in range(1000):
     print("info: ", info)
     print("reward: ", reward)
     print("------------------------------------")
-    # env.render('human')
+    env.render('human')
     # time.sleep(0.1)
     # if done:
     #     print("Episode finished after {} timesteps".format(t+1))
