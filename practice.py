@@ -73,6 +73,7 @@ if __name__ == '__main__':
 
 # --------------------------------
 
+print("Hello Test")
 # Only use with Snake Rep
 env = gym.make('smb-snake-v0')
 
@@ -91,7 +92,7 @@ for t in range(1000):
     print("reward: ", reward)
     print("------------------------------------")
     # env.render('human')
-    time.sleep(0.1)
+    # time.sleep(0.1)
     # if done:
     #     print("Episode finished after {} timesteps".format(t+1))
     #     break
