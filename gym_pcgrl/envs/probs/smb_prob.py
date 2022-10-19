@@ -453,7 +453,7 @@ class SMBProblem(Problem):
         # run the Mario-AI framework
         self.saveLevelAsText(new_map[:, max(0, now_x-3*self.win_w): now_x+self.win_w], rootpath + "mario_current_map")
         subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
-        self.completion_rate = self.readMarioAIResultFile(rootpath + "\mario_result.txt")
+        self.completion_rate = self.readMarioAIResultFile(rootpath + "mario_result.txt")
         reward += self.completion_rate
 
         # for the map, use the originally passed in map
