@@ -226,7 +226,7 @@ class SMBProblem(Problem):
                 # Pass in the generated piece to the Mario AI to check
                 # if the new piece is playable
                 self.saveLevelAsText(temp_map[: , : (i + 1) * 28], rootpath + "mario_current_map")
-                subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
+                subprocess.call(['srun java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
                 completion_rate = self.readMarioAIResultFile(rootpath + "mario_result.txt")
                 print("Block {} Completion Rate: {}".format(i, completion_rate))
                 if completion_rate == 1.0:
@@ -234,7 +234,10 @@ class SMBProblem(Problem):
                 
             print("--------------------------------")
 
+
         self.convertMP2PCGRL_num(temp_map)
+
+        self.pop.append(lv2Map(temp_map[0:self.win_h, 0:self.win_w]))
         
         map[:, :] = temp_map[:, :]
 
@@ -448,24 +451,21 @@ class SMBProblem(Problem):
         new_map = np.array(new_map)
 
         # run the Mario-AI framework
-        # self.saveLevelAsText(new_map[:, max(0, now_x-3*self.win_w): now_x+self.win_w], rootpath + "mario_current_map")
-        # subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
-        # self.completion_rate = self.readMarioAIResultFile(rootpath + "\mario_result.txt")
-        # print("completion rate: ", self.completion_rate)
-        self.completion_rate = 1
+        self.saveLevelAsText(new_map[:, max(0, now_x-3*self.win_w): now_x+self.win_w], rootpath + "mario_current_map")
+        subprocess.call(['srun java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
+        self.completion_rate = self.readMarioAIResultFile(rootpath + "\mario_result.txt")
         reward += self.completion_rate
 
         # for the map, use the originally passed in map
         # calculate the diversity
         kl_val = KLWithSlideWindow(
             map, (0, now_x, self.win_h, self.win_w), self.sx, self.nx, self.sy, self.ny)
-        
-        # print("kl_val: ", kl_val)
-        # print("self.kl_fn(kl_val): ", self.kl_fn(kl_val))
+        self.kl_val = kl_val
 
         # need to clear the F_que when we move to the next block section
         # calculate fun 
-        rew_F = self.add_then_norm(self.kl_fn(kl_val), self.F_que)
+        # rew_F = self.add_then_norm(self.kl_fn(kl_val), self.F_que)
+        rew_F = self.kl_fn(kl_val)
         self._rew_F = rew_F
         # print("rew_F: ", rew_F)
         reward += rew_F
@@ -473,7 +473,9 @@ class SMBProblem(Problem):
         # calculate historical deviation
         piece_map = lv2Map(map[:, now_x : now_x + self.win_w])
         novelty = self.cal_novelty(piece_map)
-        rew_H = self.add_then_norm(novelty, self.H_que)
+        self.pop.append(piece_map)
+        # rew_H = self.add_then_norm(novelty, self.H_que)
+        rew_H = novelty
         self._rew_H = rew_H
         # print("rew_H: ", rew_H)
         reward += rew_H
@@ -482,30 +484,31 @@ class SMBProblem(Problem):
 
         # To dynamically change the min and max of empty and enemy tiles 
         # based on the current block number
-        ratio = self._cur_block_num / (self._end_block_num + 1)
+        # ratio = self._cur_block_num / (self._end_block_num + 1)
 
         # -----PCGRL Reward Method-----
         # longer path is rewarded and less number of regions is rewarded
-        rewards = {
-            "dist-floor": get_range_reward(new_stats["dist-floor"], old_stats["dist-floor"], 0, 0),
-            "disjoint-tubes": get_range_reward(new_stats["disjoint-tubes"], old_stats["disjoint-tubes"], 0, 0),
-            "enemies": get_range_reward(new_stats["enemies"], old_stats["enemies"], int(self._min_enemies * ratio), int(self._max_enemies * ratio)),
-            "empty": get_range_reward(new_stats["empty"], old_stats["empty"], int(self._min_empty * ratio), np.inf),
-            "noise": get_range_reward(new_stats["noise"], old_stats["noise"], 0, 0),
-            "jumps": get_range_reward(new_stats["jumps"], old_stats["jumps"], int(self._min_jumps * ratio), np.inf),
-            "jumps-dist": get_range_reward(new_stats["jumps-dist"], old_stats["jumps-dist"], 0, 0),
-            "dist-win": get_range_reward(new_stats["dist-win"], old_stats["dist-win"], 0, 0)
-        }
+        # rewards = {
+        #     "dist-floor": get_range_reward(new_stats["dist-floor"], old_stats["dist-floor"], 0, 0),
+        #     "disjoint-tubes": get_range_reward(new_stats["disjoint-tubes"], old_stats["disjoint-tubes"], 0, 0),
+        #     "enemies": get_range_reward(new_stats["enemies"], old_stats["enemies"], int(self._min_enemies * ratio), int(self._max_enemies * ratio)),
+        #     "empty": get_range_reward(new_stats["empty"], old_stats["empty"], int(self._min_empty * ratio), np.inf),
+        #     "noise": get_range_reward(new_stats["noise"], old_stats["noise"], 0, 0),
+        #     "jumps": get_range_reward(new_stats["jumps"], old_stats["jumps"], int(self._min_jumps * ratio), np.inf),
+        #     "jumps-dist": get_range_reward(new_stats["jumps-dist"], old_stats["jumps-dist"], 0, 0),
+        #     "dist-win": get_range_reward(new_stats["dist-win"], old_stats["dist-win"], 0, 0)
+        # }
 
         # #calculate the total reward
-        return reward + rewards["dist-floor"] * self._rewards["dist-floor"] +\
-            rewards["disjoint-tubes"] * self._rewards["disjoint-tubes"] +\
-            rewards["enemies"] * self._rewards["enemies"] +\
-            rewards["empty"] * self._rewards["empty"] +\
-            rewards["noise"] * self._rewards["noise"] +\
-            rewards["jumps"] * self._rewards["jumps"] +\
-            rewards["jumps-dist"] * self._rewards["jumps-dist"] +\
-            rewards["dist-win"] * self._rewards["dist-win"]
+        return reward 
+            # + rewards["dist-floor"] * self._rewards["dist-floor"] +\
+            # rewards["disjoint-tubes"] * self._rewards["disjoint-tubes"] +\
+            # rewards["enemies"] * self._rewards["enemies"] +\
+            # rewards["empty"] * self._rewards["empty"] +\
+            # rewards["noise"] * self._rewards["noise"] +\
+            # rewards["jumps"] * self._rewards["jumps"] +\
+            # rewards["jumps-dist"] * self._rewards["jumps-dist"] +\
+            # rewards["dist-win"] * self._rewards["dist-win"]
         # -----PCGRL Reward Method-----
 
     # Fun reward function
@@ -547,14 +550,16 @@ class SMBProblem(Problem):
 
     def get_debug_info(self, new_stats, old_stats):
         return {
-            "dist-floor": new_stats["dist-floor"],
-            "disjoint-tubes": new_stats["disjoint-tubes"],
-            "enemies": new_stats["enemies"],
-            "empty": new_stats["empty"],
-            "noise": new_stats["noise"],
-            "jumps": new_stats["jumps"],
-            "jumps-dist": new_stats["jumps-dist"],
-            "dist-win": new_stats["dist-win"],
+            # "dist-floor": new_stats["dist-floor"],
+            # "disjoint-tubes": new_stats["disjoint-tubes"],
+            # "enemies": new_stats["enemies"],
+            # "empty": new_stats["empty"],
+            # "noise": new_stats["noise"],
+            # "jumps": new_stats["jumps"],
+            # "jumps-dist": new_stats["jumps-dist"],
+            # "dist-win": new_stats["dist-win"],
+            "kl_val": self.kl_val,
+            "completion_rate": self.completion_rate,
             "rew_F": self._rew_F,
             "rew_H": self._rew_H 
         }

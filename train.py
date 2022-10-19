@@ -89,29 +89,39 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
     used_dir = log_dir
     if not logging:
         used_dir = None
-    print("Before env")
+
     env = make_vec_envs(env_name, representation, log_dir, n_cpu, **kwargs)
-    # check_env(env)
-    print("Before model")
-    model = PPO2(policy, env, verbose=1, tensorboard_log="./runs")
+    if not resume or model is None:
+        model = PPO2(policy, env, verbose=1, tensorboard_log="./runs")
+    else:
+        model.set_env(env)
+    if not logging:
+        model.learn(total_timesteps=int(steps), tb_log_name=exp_name)
+    else:
+        model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback)
+    # print("Before env")
+    # env = make_vec_envs(env_name, representation, log_dir, n_cpu, **kwargs)
+    # # check_env(env)
+    # print("Before model")
+    # model = PPO2(policy, env, verbose=1, tensorboard_log="./runs")
 
-    print("Before model learn")
-    model.learn(total_timesteps=int(steps), tb_log_name=exp_name)
-    # model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback)
-    # model.save(f"{models_dir}/{TIMESTEPS*iters}")
+    # print("Before model learn")
+    # model.learn(total_timesteps=int(steps), tb_log_name=exp_name)
+    # # model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback)
+    # # model.save(f"{models_dir}/{TIMESTEPS*iters}")
 
-    episodes = 1000
+    # episodes = 1000
 
-    print("Before running episodes")
-    for ep in range(episodes):
-        obs = env.reset()
-        done = False
-        while not done:
-            action, _states = model.predict(obs)
-            obs, rewards, done, info = env.step(action)
-            env.render()
-            # time.sleep(10)
-            print(rewards)
+    # print("Before running episodes")
+    # for ep in range(episodes):
+    #     obs = env.reset()
+    #     done = False
+    #     while not done:
+    #         action, _states = model.predict(obs)
+    #         obs, rewards, done, info = env.step(action)
+    #         env.render()
+    #         # time.sleep(10)
+    #         print(rewards)
 
     # if not resume or model is None:
     #     model = PPO2(policy, env, verbose=1, tensorboard_log="./runs")
@@ -126,10 +136,10 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
 game = 'smb'
 representation = 'snake'
 experiment = None
-steps = 10000
+steps = 1e7
 render = False
 logging = True
-n_cpu = 1
+n_cpu = 2 # number of cpu cores; this should not exceed the number cpu cores of PC
 kwargs = {
     'resume': False
 }

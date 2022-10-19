@@ -36,3 +36,6 @@ runs/
 
 # Saved models
 *.zip
+
+# Saved images
+*_rep_images

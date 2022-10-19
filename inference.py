@@ -40,8 +40,8 @@ def infer(game, representation, model_path, **kwargs):
         time.sleep(0.2)
 
 ################################## MAIN ########################################
-game = 'binary'
-representation = 'narrow'
+game = 'smb'
+representation = 'snake'
 model_path = 'models/{}/{}/best_model.pkl'.format(game, representation)
 kwargs = {
     'change_percentage': 0.4,
