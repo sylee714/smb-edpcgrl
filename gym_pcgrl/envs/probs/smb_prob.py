@@ -76,9 +76,9 @@ class SMBProblem(Problem):
         # print("End Block: ", self._end_block_num )
         # print("Last iteration: ", self._last_iteration)
         
-        self.F_que = deque(maxlen=self._total_num_of_tiles)
-        self.H_que = deque(maxlen=self._total_num_of_tiles)
-        self.pop = deque(maxlen=self._total_num_of_tiles)
+        # self.F_que = deque(maxlen=self._total_num_of_tiles)
+        # self.H_que = deque(maxlen=self._total_num_of_tiles)
+        self.history_stack = deque(maxlen=(self.novel_k + 1))
 
 
     def reset(self, start_stats):
@@ -239,7 +239,7 @@ class SMBProblem(Problem):
 
         self.convertMP2PCGRL_num(temp_map)
 
-        self.pop.append(lv2Map(temp_map[0:self.win_h, 0:self.win_w]))
+        self.history_stack.append(lv2Map(temp_map[0:self.win_h, 0:self.win_w]))
         
         map[:, :] = temp_map[:, :]
 
@@ -434,6 +434,7 @@ class SMBProblem(Problem):
     
         reward = 0
 
+        self._prev_block_num = self._cur_block_num
         self._cur_block_num = self.get_cur_block_num(self.current_iteration)
 
         # Calculate the X start position based on the current block number
@@ -475,7 +476,11 @@ class SMBProblem(Problem):
         # calculate historical deviation
         piece_map = lv2Map(map[:, now_x : now_x + self.win_w])
         novelty = self.cal_novelty(piece_map)
-        self.pop.append(piece_map)
+
+        # if we are in the same block, pop the previous one and add it.
+        if self._prev_block_num == self._cur_block_num:
+            self.history_stack.pop()
+        self.history_stack.append(piece_map)
         # rew_H = self.add_then_norm(novelty, self.H_que)
         rew_H = novelty
         self._rew_H = rew_H
@@ -525,7 +530,7 @@ class SMBProblem(Problem):
 
     def cal_novelty(self, piece):
         score = []
-        for x in self.pop:
+        for x in self.history_stack:
             score.append(calKLFromMap(x, piece))
         score.sort()
         sum = 0

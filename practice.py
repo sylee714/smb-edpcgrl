@@ -73,16 +73,14 @@ if __name__ == '__main__':
 
 # --------------------------------
 
-print("Hello Test")
 # Only use with Snake Rep
 env = gym.make('smb-snake-v0')
-
 
 # Observation and action space 
 obs_space = env.observation_space
 action_space = env.action_space
-print("The observation space: {}".format(obs_space))
-print("The action space: {}".format(action_space))
+# print("The observation space: {}".format(obs_space))
+# print("The action space: {}".format(action_space))
 
 obs = env.reset()
 for t in range(1000):
