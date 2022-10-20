@@ -50,12 +50,11 @@ def callback(_locals, _globals):
     # Returning False will stop training early
     return True
 
-
 def main(game, representation, experiment, steps, n_cpu, render, logging, **kwargs):
     env_name = '{}-{}-v0'.format(game, representation)
     exp_name = get_exp_name(game, representation, experiment, **kwargs)
     resume = kwargs.get('resume', False)
-    
+
     if representation == 'wide':
         policy = FullyConvPolicyBigMap
         if game == "sokoban":
