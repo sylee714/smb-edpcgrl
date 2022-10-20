@@ -55,6 +55,7 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
     env_name = '{}-{}-v0'.format(game, representation)
     exp_name = get_exp_name(game, representation, experiment, **kwargs)
     resume = kwargs.get('resume', False)
+    
     if representation == 'wide':
         policy = FullyConvPolicyBigMap
         if game == "sokoban":
@@ -77,16 +78,18 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
     if not resume:
         n = n + 1
     log_dir = 'runs/{}_{}_{}'.format(exp_name, n, 'log')
+
     if not resume:
         os.mkdir(log_dir)
     else:
-        model = PPO2.load_model(log_dir, 'latest_model.pkl')
-        model.set_env(env)
+        model = load_model(log_dir)
+
     kwargs = {
         **kwargs,
         'render_rank': 0,
         'render': render,
     }
+
     used_dir = log_dir
     if not logging:
         used_dir = None
@@ -96,45 +99,11 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
         model = PPO2(policy, env, verbose=1, tensorboard_log="./runs")
     else:
         model.set_env(env)
-    if resume:
-        model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback, reset_num_timesteps=False)
+    
+    if not logging:
+        model.learn(total_timesteps=int(steps), tb_log_name=exp_name)
     else:
-        if not logging:
-            model.learn(total_timesteps=int(steps), tb_log_name=exp_name)
-        else:
-            model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback)
-    # print("Before env")
-    # env = make_vec_envs(env_name, representation, log_dir, n_cpu, **kwargs)
-    # # check_env(env)
-    # print("Before model")
-    # model = PPO2(policy, env, verbose=1, tensorboard_log="./runs")
-
-    # print("Before model learn")
-    # model.learn(total_timesteps=int(steps), tb_log_name=exp_name)
-    # # model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback)
-    # # model.save(f"{models_dir}/{TIMESTEPS*iters}")
-
-    # episodes = 1000
-
-    # print("Before running episodes")git 
-    # for ep in range(episodes):
-    #     obs = env.reset()
-    #     done = False
-    #     while not done:
-    #         action, _states = model.predict(obs)
-    #         obs, rewards, done, info = env.step(action)
-    #         env.render()
-    #         # time.sleep(10)
-    #         print(rewards)
-
-    # if not resume or model is None:
-    #     model = PPO2(policy, env, verbose=1, tensorboard_log="./runs")
-    # else:
-    #     model.set_env(env)
-    # if not logging:
-    #     model.learn(total_timesteps=int(steps), tb_log_name=exp_name)
-    # else:
-    #     model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback)
+        model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback)
 
 ################################## MAIN ########################################
 game = 'smb'
