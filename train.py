@@ -99,10 +99,13 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
     else:
         model.set_env(env)
     
-    if not logging:
-        model.learn(total_timesteps=int(steps), tb_log_name=exp_name)
+    if resume:
+        model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback, reset_num_timesteps=False)
     else:
-        model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback)
+        if not logging:
+            model.learn(total_timesteps=int(steps), tb_log_name=exp_name)
+        else:
+            model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback)
 
 ################################## MAIN ########################################
 game = 'smb'
