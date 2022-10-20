@@ -72,6 +72,9 @@ class SMBProblem(Problem):
         # termination condition
         self._last_iteration = remaining_tiles
 
+        # bool to track if it generates unplayable blocks 10 times in a row
+        self.unplayable = False
+
         # print("Number of tiles per block: ", self._num_of_tiles_per_block)
         # print("End Block: ", self._end_block_num )
         # print("Last iteration: ", self._last_iteration)
@@ -83,6 +86,8 @@ class SMBProblem(Problem):
     def reset(self, start_stats):
         super().reset(start_stats)
         self._cur_block_num = self._start_block_num # to tell which block iteration is on
+        self.history_stack.clear()
+        self.unplayable = False
 
     # Generate a random vector, which is used to generate the initial block
     def sample_random_vector(self, size):
@@ -228,12 +233,14 @@ class SMBProblem(Problem):
             
             playable = False
 
+            # count to reset the game if it generates unplayable segments 10 times in the same block
+            count = 0
+
             print("Generating block ", i)
             # Keep generate the block till it's playable
-            while not playable:
+            while not playable and count < 10:
 
                 self.state = self.sample_random_vector(self.nz)
-                print(self.state)
                 
                 st = time.time()
                 piece = self.generator.generate(self.state)
@@ -254,6 +261,10 @@ class SMBProblem(Problem):
                 print("Block {} Completion Rate: {}".format(i, completion_rate))
                 if completion_rate == 1.0:
                     playable = True
+                count += 1
+
+            if count >= 10:
+                self.unplayable = True
                 
             print("--------------------------------")
 
@@ -576,7 +587,7 @@ class SMBProblem(Problem):
             return (value-minv)/(maxv-minv)
     
     def get_episode_over(self, new_stats=None, old_stat=None):
-        return self.completion_rate < 1.0 or self.current_iteration == self._last_iteration
+        return self.completion_rate < 1.0 or self.current_iteration == self._last_iteration or self.unplayable
 
     def get_debug_info(self, new_stats, old_stats):
         return {
