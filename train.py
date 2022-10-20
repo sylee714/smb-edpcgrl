@@ -143,7 +143,7 @@ logging = True
 # we get multiple environments and they try to read/modify the same file.
 n_cpu = 1 # number of cpu cores; this should not exceed the number cpu cores of PC
 kwargs = {
-    'resume': False
+    'resume': True
 }
 
 if __name__ == '__main__':
