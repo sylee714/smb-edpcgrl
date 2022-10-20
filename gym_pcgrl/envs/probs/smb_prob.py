@@ -231,8 +231,11 @@ class SMBProblem(Problem):
             print("Generating block ", i)
             # Keep generate the block till it's playable
             while not playable:
-		self.state = self.sample_random_vector(self.nz)
-
+  #              if self.initial_state != None:
+ #                   self.state = self.initial_state
+#                else:
+                self.state = self.sample_random_vector(self.nz)
+                print(self.state)
                 st = time.time()
                 piece = self.generator.generate(self.state)
                 st = time.time()
