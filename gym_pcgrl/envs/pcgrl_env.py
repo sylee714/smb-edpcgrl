@@ -75,13 +75,13 @@ class PcgrlEnv(gym.Env):
         # Initial map gets generated in Representation and it's stored in Rep
         # So, update the initial map with the generated segment
         self._rep.reset(self._prob._width, self._prob._height, get_int_prob(self._prob._prob, self._prob.get_tile_types()), self._prob.win_w, self._prob.win_h)
+        self._prob.reset(self._rep_stats)
 
         if self._prob_str == "smb":
             self._prob.init_map(self._rep._map)
         
         self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
-        self._prob.reset(self._rep_stats)
-
+        
         observation = self._rep.get_observation()
         return observation
 
