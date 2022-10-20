@@ -447,7 +447,7 @@ class SMBProblem(Problem):
                 return i+1
 
     # Computes the reward value
-    def get_reward(self, new_stats=None, old_stats=None, map=None, iterations=0):
+    def get_reward(self, new_stats=None, old_stats=None, map=None, iterations=0, cur_loc=None):
         # -----ED-PCGRL Reward Method-----
         self.current_iteration = iterations
     
