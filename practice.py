@@ -74,7 +74,7 @@ if __name__ == '__main__':
 # --------------------------------
 
 # Only use with Snake Rep
-env = gym.make('smb-snake-v0')
+env = gym.make('smb-left-right-v0')
 
 # Observation and action space 
 obs_space = env.observation_space
@@ -83,7 +83,8 @@ action_space = env.action_space
 # print("The action space: {}".format(action_space))
 
 obs = env.reset()
-for t in range(1000):
+# for t in range(1000):
+while True:
     action = env.action_space.sample()
     obs, reward, done, info = env.step(env.action_space.sample())
     print("info: ", info)
