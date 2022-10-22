@@ -12,7 +12,7 @@ it reaches (0, 28), which covers the second block.
 Then, for the next block it starts at (x=56, y=0) and follows the same pattern.
 For the remaining blocks, it does the same thing.
 """
-class LeftRightRepresentation(Representation):
+class UpRightRepresentation(Representation):
     """
     Initialize all the parameters used by that representation
     """
@@ -35,7 +35,10 @@ class LeftRightRepresentation(Representation):
         correspond to which value for each tile type
     """
     def get_action_space(self, width, height, num_tiles):
-        return spaces.Discrete(num_tiles)
+        action_space = []
+        for i in range(56):
+            action_space.append(num_tiles)
+        return spaces.MultiDiscrete(action_space)
 
     """
     Resets the current representation where it resets the parent and the current
@@ -99,33 +102,66 @@ class LeftRightRepresentation(Representation):
     """
     def update(self, action):
         change = 0
-        # Check if it reached the end point of the last block
-        # if self._x != self._width - self._win_width or self._y != self._height - 1:
-            # if the it's the same tile, return True -> 1; otherwise, return False -> 0
-        change = [0,1][self._map[self._y][self._x] != action]
-        self._map[self._y][self._x] = action
+
+        # # Check if it reached the end point of the last block
+        # # if self._x != self._width - self._win_width or self._y != self._height - 1:
+        #     # if the it's the same tile, return True -> 1; otherwise, return False -> 0
+        # change = [0,1][self._map[self._y][self._x] != action]
+        # self._map[self._y][self._x] = action
         
+        # print("self._x: ", self._x)
+        # print("self._y: ", self._y)
+
+        # # Update the x and y
+        # # Check if it reached the end point of the last block
+        # # if self._x != self._width - self._win_width or self._y != self._height - 1:
+        # if self._x != self._width - 1 or self._y != 0:
+        #     # If it reached the end point of the current block, then move to the next block
+        #     # if self._x % self._win_width == 0 and self._y % self._win_height == self._win_height - 1:
+        #     if (self._x % self._win_width) == self._win_width - 1 and self._y % self._win_height == 0:
+        #         self._y = 13
+        #         self._x += 1
+        #     else:
+        #         # if it's a up point, then move up
+        #         if self._x % self._win_width == self._win_width - 1:
+        #             self._y -= 1
+        #             self._x = self._x - (self._win_width - 1)
+        #         else:
+        #             self._x += 1
+
         print("self._x: ", self._x)
         print("self._y: ", self._y)
 
-        # Update the x and y
-        # Check if it reached the end point of the last block
-        # if self._x != self._width - self._win_width or self._y != self._height - 1:
-        if self._x != self._width - 1 or self._y != 0:
-            # If it reached the end point of the current block, then move to the next block
-            # if self._x % self._win_width == 0 and self._y % self._win_height == self._win_height - 1:
-            if (self._x % self._win_width) == self._win_width - 1 and self._y % self._win_height == 0:
-                self._y = 13
-                self._x += 1
-            else:
-                # if it's a up point, then move up
-                if self._x % self._win_width == self._win_width - 1:
-                    self._y -= 1
-                    self._x = self._x - (self._win_width - 1)
-                else:
-                    self._x += 1
+        if self._x + 28 < self._width:
+            for i in range(len(action)):
+                x = (i % 28) + self._x
+                y = self.y_range(i) + self._y
+
+                prev = self._map[y][x]
+                change = [0,1][self._map[y][x] != action]
+                self._map[y][x] = action[i]
+
+                print("x: ", x)
+                print("y: ", y)
+                print("prev: ", prev)
+                print("new: ", self._map[y][x])
+                print("------------------------")
+        
+        # when reached the top, move to the bottom of the next block
+        if self._y + 2 < self._height:
+            self._y += 2
+        else:
+            if self._x + 28 < self._width:
+                self._x + 28
+                self._y += 0
 
         return change, self._x, self._y
+
+    def y_range(self, num):
+        if 0 <= num <= 27:
+            return 0
+        else:
+            return 1
 
     """
     Modify the level image with a red rectangle around the tile that is
