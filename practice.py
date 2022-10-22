@@ -75,6 +75,10 @@ if __name__ == '__main__':
 
 # Only use with Snake Rep
 env = gym.make('smb-snake-v0')
+# kwargs = {
+#     'port': 62504
+# }
+# env.adjust_param(**kwargs)
 
 # Observation and action space 
 obs_space = env.observation_space
@@ -90,10 +94,10 @@ for t in range(1000):
     print("reward: ", reward)
     print("------------------------------------")
     env.render('human')
-    # time.sleep(0.1)
-    # if done:
-    #     print("Episode finished after {} timesteps".format(t+1))
-    #     break
+    time.sleep(0.1)
+    if done:
+        print("Episode finished after {} timesteps".format(t+1))
+        break
 
 
 

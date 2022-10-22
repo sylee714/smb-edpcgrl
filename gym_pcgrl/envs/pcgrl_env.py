@@ -138,22 +138,22 @@ class PcgrlEnv(gym.Env):
     def step(self, action):
         self._iteration += 1
 
-        # self._old_stats = self._rep_stats
-        old_stats = self._rep_stats
-
+        self._old_stats = self._rep_stats
+        
         change, x, y = self._rep.update(action)
         
+        # if there is a change, get the new stats
         if change > 0:
             self._changes += change
             self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
             
-        reward = self._prob.get_reward(new_stats=self._rep_stats, old_stats=old_stats, map=self._rep._map, iterations=self._iteration)
+        reward = self._prob.get_reward(new_stats=self._rep_stats, old_stats=self._old_stats, map=self._rep._map, iterations=self._iteration)
 
         observation = self._rep.get_observation()
 
-        done = self._prob.get_episode_over()
+        done = self._prob.get_episode_over(new_stats=self._rep_stats)
 
-        info = self._prob.get_debug_info(self._rep_stats, old_stats)
+        info = self._prob.get_debug_info(self._rep_stats, self._old_stats)
         info["iterations"] = self._iteration
         info["changes"] = self._changes
         
