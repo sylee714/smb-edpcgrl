@@ -75,13 +75,13 @@ class PcgrlEnv(gym.Env):
         # Initial map gets generated in Representation and it's stored in Rep
         # So, update the initial map with the generated segment
         self._rep.reset(self._prob._width, self._prob._height, get_int_prob(self._prob._prob, self._prob.get_tile_types()), self._prob.win_w, self._prob.win_h)
+        self._prob.reset(self._rep_stats)
 
         if self._prob_str == "smb":
             self._prob.init_map(self._rep._map)
         
         self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
-        self._prob.reset(self._rep_stats)
-
+        
         observation = self._rep.get_observation()
         return observation
 
@@ -138,22 +138,22 @@ class PcgrlEnv(gym.Env):
     def step(self, action):
         self._iteration += 1
 
-        # self._old_stats = self._rep_stats
-        old_stats = self._rep_stats
-
+        self._old_stats = self._rep_stats
+        
         change, x, y = self._rep.update(action)
         
+        # if there is a change, get the new stats
         if change > 0:
             self._changes += change
             self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
             
-        reward = self._prob.get_reward(new_stats=self._rep_stats, old_stats=old_stats, map=self._rep._map, iterations=self._iteration, cur_loc=(x,y))
+        reward = self._prob.get_reward(new_stats=self._rep_stats, old_stats=self._old_stats, map=self._rep._map, iterations=self._iteration)
 
         observation = self._rep.get_observation()
 
-        done = self._prob.get_episode_over()
+        done = self._prob.get_episode_over(new_stats=self._rep_stats)
 
-        info = self._prob.get_debug_info(self._rep_stats, old_stats)
+        info = self._prob.get_debug_info(self._rep_stats, self._old_stats)
         info["iterations"] = self._iteration
         info["changes"] = self._changes
         

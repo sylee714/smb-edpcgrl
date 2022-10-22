@@ -6,6 +6,7 @@ from stable_baselines import PPO2
 
 import time
 from utils import make_vec_envs
+from gym_pcgrl.envs.probs.MarioLevelRepairer.CNet.model import CNet
 
 def infer(game, representation, model_path, **kwargs):
     """
