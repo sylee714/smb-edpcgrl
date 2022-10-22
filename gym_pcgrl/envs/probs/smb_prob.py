@@ -86,8 +86,6 @@ class SMBProblem(Problem):
         self.generator = Generator(random.randint(1, 10000000))
         self.repairer = Repairer(0) # passing in cuda_id=0 for only cpu
 
-        self.novel_k = 4
-
         self.win_h, self.win_w = 14, 28
         self._num_of_tiles_per_block = self.win_h * self.win_w
         self.sy, self.sx = 14, 7
@@ -101,8 +99,12 @@ class SMBProblem(Problem):
         # calculate the end block number
         self._end_block_num = remaining_tiles//self._num_of_tiles_per_block
 
+        # print("end block: ", self._end_block_num)
+
         # termination condition
-        self._last_iteration = remaining_tiles
+        # self._last_iteration = remaining_tiles
+        # 7 iterations per block since we are moving 2 rows at a time
+        self._last_iteration = self._end_block_num * 7
 
         # bool to track if it generates unplayable blocks 10 times in a row
         self.unplayable = False
@@ -113,11 +115,16 @@ class SMBProblem(Problem):
         
         # self.F_que = deque(maxlen=self._total_num_of_tiles)
         # self.H_que = deque(maxlen=self._total_num_of_tiles)
+        # max. number of previous blocks to consider for the historical feature
+        self.novel_k = 4
         self.history_stack = deque(maxlen=(self.novel_k + 1))
 
     def reset(self, start_stats):
         super().reset(start_stats)
         self._cur_block_num = self._start_block_num # to tell which block iteration is on
+        self.fun = 0
+        self.his_dev = 0
+        self.kl_val = 0
         self.history_stack.clear()
         self.unplayable = False
 
@@ -144,7 +151,7 @@ class SMBProblem(Problem):
                     map[i][j] = "enemy"
                 elif map[i][j] == 6:
                     map[i][j] = "tube"
-                elif map[i][j] == 7:
+                elif map[i][j] == 7: 
                     map[i][j] = "tube"
                 elif map[i][j] == 8:
                     map[i][j] = "tube"
@@ -450,150 +457,88 @@ class SMBProblem(Problem):
         # convert to numpy for easy slicing
         new_map = np.array(map)
 
-        # Consider the whole map?
-        # or only the certain blocks based on the number of iterations
-        # if we consider only the certain blocks based on the number of iterations,
-        # dynamically calculate the min and max numbers of the empty tiles and the enemy tiles.
-        # Then, we also need a logtic to convert "self._cur_block_num" to valid indices. 
-        # Ex. map[:, : cur_block * win_w + win_w] 
-        # -----PCGRL Reward Method-----
-        map_locations = get_tile_locations(new_map[:, : self._cur_block_num * self.win_w + self.win_w], self.get_tile_types())
         map_stats = {
-            "dist-floor": get_floor_dist(new_map[:, : self._cur_block_num * self.win_w + self.win_w], ["enemy"], ["solid", "brick", "question", "tube_left", "tube_right"]),
-            "disjoint-tubes": get_type_grouping(new_map[:, : self._cur_block_num * self.win_w + self.win_w], ["tube"], [(-1,0),(1,0)],1,1),
-            "enemies": calc_certain_tile(map_locations, ["enemy"]),
-            "empty": calc_certain_tile(map_locations, ["empty"]),
-            "noise": get_changes(new_map[:, : self._cur_block_num * self.win_w + self.win_w], False) + get_changes(new_map[:, : self._cur_block_num * self.win_w + self.win_w], True),
-            "jumps": 0,
-            "jumps-dist": 0,
             "dist-win": 0
         }
+
         map_stats["dist-win"], play_stats = self._run_game(new_map[:, : self._cur_block_num * self.win_w + self.win_w])
         map_stats["status"] = play_stats["status"] 
-        map_stats["jumps"] = play_stats["jumps"]
-
-        prev_jump = 0
-        value = 0
-
-        for l in play_stats["jump_locs"]:
-            value = max(value, l[0] - prev_jump)
-            prev_jump = l[0]
-        value = max(value, self._width - prev_jump)
-
-        map_stats["jumps-dist"] = value
-        # -----PCGRL Reward Method-----
 
         return map_stats
 
-    def get_cur_block_num(self, iterations):
-        for i in range(self._end_block_num + 1):
-            if (self._num_of_tiles_per_block * i) + 1 <= iterations and iterations <= self._num_of_tiles_per_block * (i + 1):
-                return i+1
+    # Get the block number based on the number of iterations
+    def get_cur_block_num(self, iter):
+        if 1 <= iter <= 7:
+            return 1
+        elif 8 <= iter <= 14:
+            return 2
+        elif 15 <= iter <= 21:
+            return 3
+        elif 22 <= iter <= 28:
+            return 4
 
     # Computes the reward value
     def get_reward(self, new_stats=None, old_stats=None, map=None, iterations=0, cur_loc=None):
         # -----ED-PCGRL Reward Method-----
         self.current_iteration = iterations
-    
-        reward = 0
-
         self._prev_block_num = self._cur_block_num
-        self._cur_block_num = self.get_cur_block_num(self.current_iteration)
-
-        # Calculate the X start position based on the current block number
-        now_x = 0 + self.win_w * self._cur_block_num
-
-        # Convert the map to MarioPuzzle tile to run the Mario-AI framework
-        # First, need to convert the num tiles to str tiles in PCG-RL, since some tiles like tubes are not distinguishable
-        # Then, convert the pcg-rl str tiles to mariopuzzle num-tiles
-
-        # Convert the pcg-rl num tiles to str tiles
-        new_map = self.convertPCGRL_num2PCGRL_str(get_string_map(map, self.get_tile_types()))
-
-        # convert the pcg-rl str tiles to mariopuzzle num-tiles
-        self.convertPCGRL_str2MP_num(new_map)
-
-        # convert to numpy array for easier index slicing
-        new_map = np.array(new_map)
-
-        # run the Mario-AI framework
-        full_map = self.addStartEndPoints(new_map[:, max(0, now_x-3*self.win_w): now_x+self.win_w])
-        saveLevelAsText(full_map, rootpath + "mario_current_map")
-        subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
-        self.completion_rate = self.readMarioAIResultFile(rootpath + "mario_result.txt")
-        print("Completions rate: ", self.completion_rate)
+        reward = 0
 
         # the "get_reward" method gets called after the "get_stats" method
         # the map is checked if it's playable or not in the "get_stats" method
-        reward = 0
         # if the dis-win == 0 and the status == win
         # it's a playable level, give a huge positive value for playability?
-        if new_stats["dist-win"] == 0 and new_stats["status"] == "win":
-            print("playable")
-            reward += 1
+        # if new_stats["dist-win"] == 0 and new_stats["status"] == "win":
+        if True:            
+            self._cur_block_num = self.get_cur_block_num(self.current_iteration)
+
+            # calculate the current x and y location based 
+            # on the current block number and the current iteration number
+            now_x = 0 + self.win_w * self._cur_block_num
+            now_y = getNowY(self.current_iteration)
+            
+            # ------ Playability ------
+            # give what value if it's playble?
+            # reward += 1
+            # ------ Playability ------
+
+            # ------ Fun ------
             # for the map, use the originally passed in map
             # calculate the diversity
+            # y should start at 13 not 0 since we are going from bottom to top
             kl_val = KLWithSlideWindow(
-                map, (0, now_x, self.win_h, self.win_w), self.sx, self.nx, self.sy, self.ny)
+                map, (now_y, now_x, getSWHeight(self.current_iteration), self.win_w), self.sx, self.nx, self.sy, self.ny)
             self.kl_val = kl_val
 
             # need to clear the F_que when we move to the next block section
             # calculate fun 
             # rew_F = self.add_then_norm(self.kl_fn(kl_val), self.F_que)
-            rew_F = self.kl_fn(kl_val)
-            self._rew_F = rew_F
-            # print("rew_F: ", rew_F)
-            reward += rew_F
+            self.fun = self.kl_fn(kl_val)
+            # reward += self.fun
+            # ------ Fun ------
+
+            # ------ Historical Deviation ------
+            # clear the history stack
+            self.history_stack.clear()
+
+            # push the previous generated blocks to the history stack
+            for i in range(self._cur_block_num):
+                self.history_stack.append(lv2Map(map[now_y : 14, now_x - ((i + 1) * 28) : now_x - (i * 28)]))
+                print("now_x - ((i + 1) * 28): ", now_x - ((i + 1) * 28))
+                print("now_x - (i * 28): ", now_x - (i * 28))
 
             # calculate historical deviation
-            # piece_map = lv2Map(map[:, now_x : now_x + self.win_w])
-            # novelty = self.cal_novelty(piece_map)
+            piece_map = lv2Map(map[now_y : 14, now_x : now_x + self.win_w])
+            self.his_dev = self.cal_novelty(piece_map)
+            # reward += self.his_dev
+            # ------ Historical Deviation ------
 
-            # if we are in the same block, pop the previous one and add it.
-            # if self._prev_block_num == self._cur_block_num:
-            #     self.history_stack.pop()
-            # self.history_stack.append(piece_map)
-            # # rew_H = self.add_then_norm(novelty, self.H_que)
-            # rew_H = novelty
-            # self._rew_H = rew_H
-            # # print("rew_H: ", rew_H)
-            # reward += rew_H
-
-            # -----ED-PCGRL Reward Method-----
-
-            # To dynamically change the min and max of empty and enemy tiles 
-            # based on the current block number
-            # ratio = self._cur_block_num / (self._end_block_num + 1)
-
-            # -----PCGRL Reward Method-----
-            # longer path is rewarded and less number of regions is rewarded
-            # rewards = {
-            #     "dist-floor": get_range_reward(new_stats["dist-floor"], old_stats["dist-floor"], 0, 0),
-            #     "disjoint-tubes": get_range_reward(new_stats["disjoint-tubes"], old_stats["disjoint-tubes"], 0, 0),
-            #     "enemies": get_range_reward(new_stats["enemies"], old_stats["enemies"], int(self._min_enemies * ratio), int(self._max_enemies * ratio)),
-            #     "empty": get_range_reward(new_stats["empty"], old_stats["empty"], int(self._min_empty * ratio), np.inf),
-            #     "noise": get_range_reward(new_stats["noise"], old_stats["noise"], 0, 0),
-            #     "jumps": get_range_reward(new_stats["jumps"], old_stats["jumps"], int(self._min_jumps * ratio), np.inf),
-            #     "jumps-dist": get_range_reward(new_stats["jumps-dist"], old_stats["jumps-dist"], 0, 0),
-            #     "dist-win": get_range_reward(new_stats["dist-win"], old_stats["dist-win"], 0, 0)
-            # }
-
-            # #calculate the total reward
         # if unplayable, give a huge negative value
         else:
             print("unplayable")
             reward += -100
 
         return reward 
-            # + rewards["dist-floor"] * self._rewards["dist-floor"] +\
-            # rewards["disjoint-tubes"] * self._rewards["disjoint-tubes"] +\
-            # rewards["enemies"] * self._rewards["enemies"] +\
-            # rewards["empty"] * self._rewards["empty"] +\
-            # rewards["noise"] * self._rewards["noise"] +\
-            # rewards["jumps"] * self._rewards["jumps"] +\
-            # rewards["jumps-dist"] * self._rewards["jumps-dist"] +\
-            # rewards["dist-win"] * self._rewards["dist-win"]
-        # -----PCGRL Reward Method-----
 
     # Fun reward function
     # lower bound = 0.26
@@ -629,24 +574,21 @@ class SMBProblem(Problem):
         else:
             return (value-minv)/(maxv-minv)
     
+    # Check the termination conditions
+    # 1. Level is not playable
+    # 2. Reached the end iteration
+    # 3. Failed to produce a playable initial map
     def get_episode_over(self, new_stats=None, old_stat=None):
-        # return self.completion_rate < 1.0 or self.current_iteration == self._last_iteration or self.unplayable
         return new_stats["dist-win"] != 0 or new_stats["status"] != "win" or self.current_iteration == self._last_iteration or self.unplayable
 
+    # Return the debug information
     def get_debug_info(self, new_stats, old_stats):
         return {
-            # "dist-floor": new_stats["dist-floor"],
-            # "disjoint-tubes": new_stats["disjoint-tubes"],
-            # "enemies": new_stats["enemies"],
-            # "empty": new_stats["empty"],
-            # "noise": new_stats["noise"],
-            # "jumps": new_stats["jumps"],
-            # "jumps-dist": new_stats["jumps-dist"],
-            # "dist-win": new_stats["dist-win"],
-            # "kl_val": self.kl_val,
-            # "completion_rate": self.completion_rate,
-            # "rew_F": self._rew_F,
-            # "rew_H": self._rew_H 
+            "dist-win": new_stats["dist-win"],
+            "status": new_stats["status"],
+            "kl_val": self.kl_val,
+            "fun": self.fun,
+            "his dev": self.his_dev 
         }
 
     def render(self, map):

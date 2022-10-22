@@ -4,6 +4,41 @@ import math
 import os
 import PIL.Image as Image
 from PIL import ImageDraw, ImageFont
+
+# Determine the height of the sliding window depending the number of iterations
+def getSWHeight(iter):
+    if iter % 7 == 1:
+        return 2
+    elif iter % 7 == 2:
+        return 4
+    elif iter % 7 == 3:
+        return 6
+    elif iter % 7 == 4:
+        return 8
+    elif iter % 7 == 5:
+        return 10
+    elif iter % 7 == 6:
+        return 12
+    elif iter % 7 == 0:
+        return 14
+
+# Determine the top-left y position of the current working section
+def getNowY(iter):
+    if iter % 7 == 1:
+        return 12
+    elif iter % 7 == 2:
+        return 10
+    elif iter % 7 == 3:
+        return 8
+    elif iter % 7 == 4:
+        return 6
+    elif iter % 7 == 5:
+        return 4
+    elif iter % 7 == 6:
+        return 2
+    elif iter % 7 == 0:
+        return 0
+
 def mapEntropy(mp):
     sum0 = sum(mp[e] for e in mp.keys())
     res = 0
@@ -50,19 +85,50 @@ def KLWithSlideWindow(lv, window, sx, nx, sy=14, ny=0):
     _ny = min(y // sy, ny)
     _nx = min(x // sx, nx)
 
+    # print("y: ", y)
+    # print("x: ", x)
+
+    # print("sh: ", sh)
+    # print("sw: ", sw)
+
+    # print("ny: ", ny)
+    # print("nx: ", nx)
+
+    # print("sy: ", sy)
+    # print("sx: ", sx)
+
+    # print("_ny: ", _ny)
+    # print("_nx: ", _nx)
+
     # mp0 = newly generated piece
     mp0 = lv2Map(lv[y:y+sh, x:x+sw])
     res = 0
 
+    # print("y + sh: ", y + sh)
+    # print("x + sw: ", x + sw)
+
     for i in range(_ny+1):
         for j in range(_nx+1):
             p = lv[y-sy*i:y-sy*i+sh, x-sx*j:x-sx*j+sw]
+            # print("y-sy*i: ", y-sy*i)
+            # print("y-sy*i+sh: ", y-sy*i+sh)
+            # print("x-sx*j: ", x-sx*j)
+            # print("x-sx*j+sw: ", x-sx*j+sw)
+            # val = calKLFromMap(mp0, lv2Map(p))
+            # print("mp0: ", mp0)
+            # print("p: ", lv2Map(p))
+            # print("val: ", val)
             res += calKLFromMap(mp0, lv2Map(p))
 
     num = (_ny+1)*(_nx+1) 
 
+    # print("num: ", num)
+
     if num!= 0: res/=num
 
+    # print("res: ", res)
+
+    # print("----------------------")
     return res
 
 def saveLevelAsImage(level, path, line=0, mark={}):

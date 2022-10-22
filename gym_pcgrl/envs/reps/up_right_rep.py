@@ -129,31 +129,31 @@ class UpRightRepresentation(Representation):
         #         else:
         #             self._x += 1
 
-        print("self._x: ", self._x)
-        print("self._y: ", self._y)
+        # print("self._x: ", self._x)
+        # print("self._y: ", self._y)
 
-        if self._x + 28 < self._width:
+        if self._x + 28 <= self._width:
             for i in range(len(action)):
                 x = (i % 28) + self._x
-                y = self.y_range(i) + self._y
+                y = self._y - self.y_range(i)
 
                 prev = self._map[y][x]
-                change = [0,1][self._map[y][x] != action]
+                change += [0,1][self._map[y][x] != action[i]]
                 self._map[y][x] = action[i]
 
-                print("x: ", x)
-                print("y: ", y)
-                print("prev: ", prev)
-                print("new: ", self._map[y][x])
-                print("------------------------")
+                # print("x: ", x)
+                # print("y: ", y)
+                # print("prev: ", prev)
+                # print("new: ", self._map[y][x])
+                # print("------------------------")
         
         # when reached the top, move to the bottom of the next block
-        if self._y + 2 < self._height:
-            self._y += 2
+        if self._y - 2 > 0:
+            self._y -= 2
         else:
             if self._x + 28 < self._width:
-                self._x + 28
-                self._y += 0
+                self._x += 28
+                self._y = 13
 
         return change, self._x, self._y
 
