@@ -31,11 +31,11 @@ class SnakeRepresentation(Representation):
         num_tiles: the total number of the tile values
 
     Returns:
-        Discrete: the action space used by that narrow representation which
+        Discrete: the action space used by that snake representation which
         correspond to which value for each tile type
     """
     def get_action_space(self, width, height, num_tiles):
-        return spaces.MultiDiscrete(num_tiles)
+        return spaces.Discrete(num_tiles)
 
     """
     Resets the current representation where it resets the parent and the current
@@ -97,7 +97,7 @@ class SnakeRepresentation(Representation):
         })
 
     """
-    Update the wide representation with the input action
+    Update the snake representation with the input action
 
     Parameters:
         action: an action that is used to advance the environment (same as action space)
@@ -164,6 +164,6 @@ class SnakeRepresentation(Representation):
                                         (self._x+border_size[0]+1)*tile_size,(self._y+border_size[1]+1)*tile_size), x_graphics)
 
         self._iteration = self._iteration + 1
-        lvl_image.save("snake_rep_images/lvl_img_{}.png".format(self._iteration))
+        # lvl_image.save("snake_rep_images/lvl_img_{}.png".format(self._iteration))
 
         return lvl_image

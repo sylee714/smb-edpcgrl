@@ -138,6 +138,6 @@ class WideRepresentation(Representation):
                                         (self._x+border_size[0]+1)*tile_size,(self._y+border_size[1]+1)*tile_size), x_graphics)
 
         self._iteration = self._iteration + 1
-        lvl_image.save("wide_rep_images/lvl_img_{}.png".format(self._iteration))
+        # lvl_image.save("wide_rep_images/lvl_img_{}.png".format(self._iteration))
 
         return lvl_image

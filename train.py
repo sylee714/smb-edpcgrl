@@ -6,10 +6,13 @@ from model import FullyConvPolicyBigMap, FullyConvPolicySmallMap, CustomPolicyBi
 from utils import get_exp_name, max_exp_idx, load_model, make_vec_envs
 from stable_baselines import PPO2
 from stable_baselines.results_plotter import load_results, ts2xy
+from gym_pcgrl.envs.probs.MarioLevelRepairer.CNet.model import CNet
 
 import tensorflow as tf
 import numpy as np
 import os
+
+import time 
 
 n_steps = 0
 log_dir = './'
@@ -23,27 +26,27 @@ def callback(_locals, _globals):
     """
     global n_steps, best_mean_reward
     # Print stats every 1000 calls
-    if (n_steps + 1) % 10 == 0:
-        x, y = ts2xy(load_results(log_dir), 'timesteps')
-        if len(x) > 100:
-           #pdb.set_trace()
-            mean_reward = np.mean(y[-100:])
-            print(x[-1], 'timesteps')
-            print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))
+    # if (n_steps + 1) % 10 == 0:
+    x, y = ts2xy(load_results(log_dir), 'timesteps')
+    if len(x) > 0:
+        #pdb.set_trace()
+        mean_reward = np.mean(y[-100:])
+        print(x[-1], 'timesteps')
+        print("Best mean reward: {:.2f} - Last mean reward per episode: {:.2f}".format(best_mean_reward, mean_reward))
 
-            # New best model, we save the agent here
-            if mean_reward > best_mean_reward:
-                best_mean_reward = mean_reward
-                # Example for saving best model
-                print("Saving new best model")
-                _locals['self'].save(os.path.join(log_dir, 'best_model.pkl'))
-            else:
-                print("Saving latest model")
-                _locals['self'].save(os.path.join(log_dir, 'latest_model.pkl'))
+        # New best model, we save the agent here
+        if mean_reward > best_mean_reward:
+            best_mean_reward = mean_reward
+            # Example for saving best model
+            print("Saving new best model")
+            _locals['self'].save(os.path.join(log_dir, 'best_model.pkl'))
         else:
-            print('{} monitor entries'.format(len(x)))
-            pass
-    n_steps += 1
+            print("Saving latest model")
+            _locals['self'].save(os.path.join(log_dir, 'latest_model.pkl'))
+    # else:
+    #     print('{} monitor entries'.format(len(x)))
+    #     pass
+    # n_steps += 1
     # Returning False will stop training early
     return True
 
@@ -56,11 +59,14 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
         policy = FullyConvPolicyBigMap
         if game == "sokoban":
             policy = FullyConvPolicySmallMap
+
+    # For Snake Represenation, use CustomPolicyBigMap, don't know the reason
     else:
         policy = CustomPolicyBigMap
         if game == "sokoban":
             policy = CustomPolicySmallMap
-    if game == "binary":
+
+    if game == "binary" or game == "smb":
         kwargs['cropped_size'] = 28
     elif game == "zelda":
         kwargs['cropped_size'] = 22
@@ -83,6 +89,7 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
     used_dir = log_dir
     if not logging:
         used_dir = None
+
     env = make_vec_envs(env_name, representation, log_dir, n_cpu, **kwargs)
     if not resume or model is None:
         model = PPO2(policy, env, verbose=1, tensorboard_log="./runs")
@@ -92,15 +99,49 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
         model.learn(total_timesteps=int(steps), tb_log_name=exp_name)
     else:
         model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback)
+    # print("Before env")
+    # env = make_vec_envs(env_name, representation, log_dir, n_cpu, **kwargs)
+    # # check_env(env)
+    # print("Before model")
+    # model = PPO2(policy, env, verbose=1, tensorboard_log="./runs")
+
+    # print("Before model learn")
+    # model.learn(total_timesteps=int(steps), tb_log_name=exp_name)
+    # # model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback)
+    # # model.save(f"{models_dir}/{TIMESTEPS*iters}")
+
+    # episodes = 1000
+
+    # print("Before running episodes")
+    # for ep in range(episodes):
+    #     obs = env.reset()
+    #     done = False
+    #     while not done:
+    #         action, _states = model.predict(obs)
+    #         obs, rewards, done, info = env.step(action)
+    #         env.render()
+    #         # time.sleep(10)
+    #         print(rewards)
+
+    # if not resume or model is None:
+    #     model = PPO2(policy, env, verbose=1, tensorboard_log="./runs")
+    # else:
+    #     model.set_env(env)
+    # if not logging:
+    #     model.learn(total_timesteps=int(steps), tb_log_name=exp_name)
+    # else:
+    #     model.learn(total_timesteps=int(steps), tb_log_name=exp_name, callback=callback)
 
 ################################## MAIN ########################################
-game = 'binary'
-representation = 'narrow'
+game = 'smb'
+representation = 'snake'
 experiment = None
-steps = 1e8
+steps = 1e7
 render = False
 logging = True
-n_cpu = 50
+# for this smb and snanke, only use 1 core. Because if we use more than 1 core,
+# we get multiple environments and they try to read/modify the same file.
+n_cpu = 1 # number of cpu cores; this should not exceed the number cpu cores of PC
 kwargs = {
     'resume': False
 }

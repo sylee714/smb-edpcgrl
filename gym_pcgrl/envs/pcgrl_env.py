@@ -32,6 +32,9 @@ class PcgrlEnv(gym.Env):
         self._iteration = 0
         self._changes = 0
 
+        self._max_changes = max(int(0.2 * self._prob._width * self._prob._height), 1)
+        self._max_iterations = self._max_changes * self._prob._width * self._prob._height
+
         self.seed()
         self.viewer = None
 
@@ -74,7 +77,7 @@ class PcgrlEnv(gym.Env):
         self._rep.reset(self._prob._width, self._prob._height, get_int_prob(self._prob._prob, self._prob.get_tile_types()), self._prob.win_w, self._prob.win_h)
 
         if self._prob_str == "smb":
-            self._prob.update_rep_map_with_init_block(self._rep._map)
+            self._prob.init_map(self._rep._map)
         
         self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
         self._prob.reset(self._rep_stats)
@@ -111,6 +114,10 @@ class PcgrlEnv(gym.Env):
         representation and the used problem
     """
     def adjust_param(self, **kwargs):
+        if 'change_percentage' in kwargs:
+            percentage = min(1, max(0, kwargs.get('change_percentage')))
+            self._max_changes = max(int(percentage * self._prob._width * self._prob._height), 1)
+        self._max_iterations = self._max_changes * self._prob._width * self._prob._height
         self._prob.adjust_param(**kwargs)
         self._rep.adjust_param(**kwargs)
         self.action_space = self._rep.get_action_space(self._prob._width, self._prob._height, self.get_num_tiles())
@@ -131,17 +138,22 @@ class PcgrlEnv(gym.Env):
     def step(self, action):
         self._iteration += 1
 
+        # self._old_stats = self._rep_stats
+        old_stats = self._rep_stats
+
         change, x, y = self._rep.update(action)
-        reward = self._prob.get_reward(map=self._rep._map, iterations=self._iteration)
         
         if change > 0:
             self._changes += change
+            self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
+            
+        reward = self._prob.get_reward(new_stats=self._rep_stats, old_stats=old_stats, map=self._rep._map, iterations=self._iteration)
 
         observation = self._rep.get_observation()
 
         done = self._prob.get_episode_over()
 
-        info = {}
+        info = self._prob.get_debug_info(self._rep_stats, old_stats)
         info["iterations"] = self._iteration
         info["changes"] = self._changes
         
