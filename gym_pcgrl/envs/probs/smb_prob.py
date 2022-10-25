@@ -537,7 +537,7 @@ class SMBProblem(Problem):
             # calculate fun 
             # rew_F = self.add_then_norm(self.kl_fn(kl_val), self.F_que)
             self.fun = self.kl_fn(kl_val)
-            # reward += self.fun
+            reward += self.fun
             # ------ Fun ------
 
             # ------ Historical Deviation ------
@@ -553,7 +553,7 @@ class SMBProblem(Problem):
             # calculate historical deviation
             piece_map = lv2Map(map[now_y : 14, now_x : now_x + self.win_w])
             self.his_dev = self.cal_novelty(piece_map)
-            # reward += self.his_dev
+            reward += self.his_dev
             # ------ Historical Deviation ------
 
         # if unplayable, give a huge negative value
