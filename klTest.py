@@ -32,9 +32,13 @@ def lv2Map(lv, fh=2, fw=2):
             mp[k] = (mp[k]+1) if (k in mp.keys()) else 1
     return mp
 
-piece0 = np.full((2, 28), 3)
-piece1 = np.full((2, 28), 3)
-piece1[:, 10:13] = [[0, 0, 0], [0, 0, 0]]
+piece0 = np.full((4, 28), 3)
+piece1 = np.full((4, 28), 3)
+# piece0 = np.random.randint(7, size=(14, 28))
+# piece1 = np.random.randint(7, size=(14, 28))
+
+# piece1[:, 10:13] = [[0, 0, 0], [0, 0, 0]]
+piece1[:, 20:22] = [[0, 0], [0, 0]]
 print(piece0)
 print(piece1)
 

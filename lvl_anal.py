@@ -6,8 +6,8 @@ def lv2Map(lv, fh=2, fw=2):
     h, w = lv.shape
     for i in range(h-fh+1):
         for j in range(w-fw+1):
-            k = tuple((lv[i:i+fh, j:j+fw]).flatten())
-            mp[str(k)] = (mp[k]+1) if (k in mp.keys()) else 1
+            k = str(tuple((lv[i:i+fh, j:j+fw]).flatten()))
+            mp[k] = (mp[k]+1) if (k in mp.keys()) else 1
     return mp
 
 sym2num = {
@@ -120,5 +120,5 @@ for block in sorted_mp0:
 
 import json
   
-with open('valid_tile_patterns.txt', 'w') as convert_file:
+with open('valid_tile_patterns.json', 'w') as convert_file:
      convert_file.write(json.dumps(sorted_mp0))

@@ -16,6 +16,8 @@ from gym_pcgrl.envs.helper import *
 from gym_pcgrl.envs.probs.utils import *
 from collections import deque
 
+import vtp_parser
+
 rootpath = os.path.abspath(os.path.dirname(__file__)) + "/"
 
 """
@@ -112,6 +114,8 @@ class SMBProblem(Problem):
         # print("Number of tiles per block: ", self._num_of_tiles_per_block)
         # print("End Block: ", self._end_block_num )
         # print("Last iteration: ", self._last_iteration)
+
+        self.valid_patterns = vtp_parser.parse(rootpath + "valid_tile_patterns.json")
         
         # self.F_que = deque(maxlen=self._total_num_of_tiles)
         # self.H_que = deque(maxlen=self._total_num_of_tiles)
@@ -125,6 +129,7 @@ class SMBProblem(Problem):
         self.fun = 0
         self.his_dev = 0
         self.kl_val = 0
+        self.valid_pattern_counts = 0
         self.history_stack.clear()
         self.unplayable = False
 
@@ -466,6 +471,19 @@ class SMBProblem(Problem):
 
         return map_stats
 
+    # count the number of valid pattern in a newly generated piece
+    def eval_valid_patterns(self, piece):
+        counts = 0
+        fh = 2
+        fw = 2
+        h, w = piece.shape
+        for i in range(h-fh+1):
+            for j in range(w-fw+1):
+                k = str(tuple((piece[i:i+fh, j:j+fw]).flatten()))
+                if k in self.valid_patterns:
+                    counts += 1
+        return counts
+
     # Get the block number based on the number of iterations
     def get_cur_block_num(self, iter):
         if 1 <= iter <= 7:
@@ -501,6 +519,11 @@ class SMBProblem(Problem):
             # give what value if it's playble?
             # reward += 1
             # ------ Playability ------
+
+            # ----- Valid Patterns -----
+            self.valid_pattern_counts = self.eval_valid_patterns(map[now_y : now_y + 2, now_x : now_x + 28])
+            reward += (self.valid_pattern_counts * 3)
+            # ----- Valid Patterns -----
 
             # ------ Fun ------
             # for the map, use the originally passed in map
@@ -548,7 +571,7 @@ class SMBProblem(Problem):
             return -(val-0.26)**2
         if (val > 0.94):
             return -(val-0.94)**2
-        return 0
+        return (val*10)**2
 
     def cal_novelty(self, piece):
         score = []
@@ -586,9 +609,10 @@ class SMBProblem(Problem):
         return {
             "dist-win": new_stats["dist-win"],
             "status": new_stats["status"],
+            "valid_pattern_counts:": self.valid_pattern_counts,
             "kl_val": self.kl_val,
             "fun": self.fun,
-            "his dev": self.his_dev 
+            "his dev": self.his_dev
         }
 
     def render(self, map):
