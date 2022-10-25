@@ -547,8 +547,8 @@ class SMBProblem(Problem):
             # push the previous generated blocks to the history stack
             for i in range(self._cur_block_num):
                 self.history_stack.append(lv2Map(map[now_y : 14, now_x - ((i + 1) * 28) : now_x - (i * 28)]))
-                print("now_x - ((i + 1) * 28): ", now_x - ((i + 1) * 28))
-                print("now_x - (i * 28): ", now_x - (i * 28))
+                # print("now_x - ((i + 1) * 28): ", now_x - ((i + 1) * 28))
+                # print("now_x - (i * 28): ", now_x - (i * 28))
 
             # calculate historical deviation
             piece_map = lv2Map(map[now_y : 14, now_x : now_x + self.win_w])
