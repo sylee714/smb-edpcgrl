@@ -260,63 +260,56 @@ class SMBProblem(Problem):
     # modify this method to initialize all the blocks
     def init_map(self, map):
 
-        temp_map = np.zeros([self._height, self._width], dtype = int)
+        # temp_map = np.zeros([self._height, 28], dtype = int)
+        new_piece = np.zeros([self._height, 28], dtype = int)
         
-        # need to generate 5 blocks in total
-        for i in range(int(self._width / self.win_w)):
-            
-            playable = False
+        playable = False
 
-            # count to reset the game if it generates unplayable segments 10 times in the same block
-            count = 0
+        # count to reset the game if it generates unplayable segments 10 times in the same block
+        count = 0
 
-            print("Generating block ", i)
-            # Keep generate the block till it's playable
-            while not playable and count < 10:
-                # random state
-                self.state = self.sample_random_vector(self.nz)
+        # Keep generate the block till it's playable
+        print("Generating the initial block")
+        while not playable and count < 10:
+            # random state
+            self.state = self.sample_random_vector(self.nz)
 
-                # generate a new piece
-                st = time.time()
-                piece = self.generator.generate(self.state)
+            # generate a new piece
+            st = time.time()
+            piece = self.generator.generate(self.state)
 
-                # repair broken tiles
-                st = time.time()
-                new_piece = self.repairer.repair(piece)
+            # repair broken tiles
+            st = time.time()
+            new_piece = self.repairer.repair(piece)
 
-                # Copy the new piece to the temp map
-                temp_map[:, i * 28 : (i + 1) * 28] = new_piece
+            # Pass in the generated piece to the Mario AI to check if the new piece is playable from the start
+            full_map = self.addStartEndPoints(new_piece)
+            saveLevelAsText(full_map, rootpath + "mario_current_map")
+            subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
+            completion_rate = self.readMarioAIResultFile(rootpath + "mario_result.txt")
 
-                # Pass in the generated piece to the Mario AI to check if the new piece is playable from the start
-                # full_map = self.addStartEndPoints(temp_map[: , max(0, i-1) * 28 : (i+1) * 28])
-                full_map = self.addStartEndPoints(temp_map[: , : (i+1) * 28])
-                saveLevelAsText(full_map, rootpath + "mario_current_map")
-                subprocess.call(['java', '-jar', rootpath + "Mario-AI-Framework.jar", rootpath + "mario_current_map.txt"])
-                completion_rate = self.readMarioAIResultFile(rootpath + "mario_result.txt")
+            print("Completion Rate: {}".format(completion_rate))
 
-                print("Block {} Completion Rate: {}".format(i, completion_rate))
+            # check it's playable
+            if completion_rate == 1.0:
+                playable = True
 
-                # check it's playable
-                if completion_rate == 1.0:
-                    playable = True
-
+            if not playable:
                 count += 1
-
-            if count >= 10:
-                self.unplayable = True
-                break
-                
-            if self.unplayable:
-                break
             print("--------------------------------")
 
+        # if generated a playable initial block, add it to the map
+        if playable:
+            self.convertMP2PCGRL_num(new_piece)
 
-        if not self.unplayable:
-            self.convertMP2PCGRL_num(temp_map)
-
-            self.history_stack.append(lv2Map(temp_map[0:self.win_h, 0:self.win_w]))
+            self.history_stack.append(lv2Map(new_piece[:, :]))
             
-            map[:, :] = temp_map[:, :]
+            map[:, :28] = new_piece[:, :]
+
+        # if not, mark this episode as unplayable
+        else:
+            self.unplayable = True
+
 
     # This method is to repair a block after the representation finishes updating the working block.
     def repair_block(self, map, block_num):
