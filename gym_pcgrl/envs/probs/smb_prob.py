@@ -125,6 +125,7 @@ class SMBProblem(Problem):
 
     def reset(self, start_stats):
         super().reset(start_stats)
+        self.generator = Generator(random.randint(1, 10000000))
         self._cur_block_num = self._start_block_num # to tell which block iteration is on
         self.fun = 0
         self.his_dev = 0
@@ -303,15 +304,19 @@ class SMBProblem(Problem):
 
             if count >= 10:
                 self.unplayable = True
+                break
                 
+            if self.unplayable:
+                break
             print("--------------------------------")
 
 
-        self.convertMP2PCGRL_num(temp_map)
+        if not self.unplayable:
+            self.convertMP2PCGRL_num(temp_map)
 
-        self.history_stack.append(lv2Map(temp_map[0:self.win_h, 0:self.win_w]))
-        
-        map[:, :] = temp_map[:, :]
+            self.history_stack.append(lv2Map(temp_map[0:self.win_h, 0:self.win_w]))
+            
+            map[:, :] = temp_map[:, :]
 
     # This method is to repair a block after the representation finishes updating the working block.
     def repair_block(self, map, block_num):
@@ -506,9 +511,10 @@ class SMBProblem(Problem):
         # the map is checked if it's playable or not in the "get_stats" method
         # if the dis-win == 0 and the status == win
         # it's a playable level, give a huge positive value for playability?
-        if new_stats["dist-win"] == 0 and new_stats["status"] == "win":
+        # if new_stats["dist-win"] == 0 and new_stats["status"] == "win":
         # if True:            
-            # print("current iteration: ", self.current_iteration)
+        # print("current iteration: ", self.current_iteration)
+        if not self.unplayable:
             self._cur_block_num = self.get_cur_block_num(self.current_iteration)
 
             # calculate the current x and y location based 
@@ -555,12 +561,12 @@ class SMBProblem(Problem):
             piece_map = lv2Map(map[now_y : 14, now_x : now_x + self.win_w])
             self.his_dev = self.cal_novelty(piece_map)
             reward += self.his_dev
-            # ------ Historical Deviation ------
+        # ------ Historical Deviation ------
 
         # if unplayable, give a huge negative value
-        else:
+        # else:
             # print("unplayable")
-            reward += -100
+            # reward += -100
 
         return reward 
 
