@@ -87,7 +87,7 @@ action_space = env.action_space
 # for t in range(1000):
 
 done = False
-for i in range(5):
+for i in range(10):
     done = False
     obs = env.reset()
     t = 0

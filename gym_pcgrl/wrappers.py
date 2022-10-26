@@ -40,7 +40,10 @@ class ToImage(gym.Wrapper):
         self.observation_space = gym.spaces.Box(low=0, high=max_value,shape=(self.shape[0], self.shape[1], depth))
 
     def step(self, action):
-        action = get_action(action)
+        # print("type of action: ", type(action))
+        # print("action: ", action)
+        # print("get_action: ", get_action(action))
+        # action = get_action(action)
         obs, reward, done, info = self.env.step(action)
         obs = self.transform(obs)
         return obs, reward, done, info
@@ -88,7 +91,7 @@ class OneHotEncoding(gym.Wrapper):
         self.observation_space.spaces[self.name] = gym.spaces.Box(low=0, high=1, shape=new_shape, dtype=np.uint8)
 
     def step(self, action):
-        action = get_action(action)
+        # action = get_action(action)
         obs, reward, done, info = self.env.step(action)
         obs = self.transform(obs)
         return obs, reward, done, info
@@ -184,7 +187,7 @@ class Cropped(gym.Wrapper):
         self.observation_space.spaces[self.name] = gym.spaces.Box(low=0, high=high_value, shape=(crop_size, crop_size), dtype=np.uint8)
 
     def step(self, action):
-        action = get_action(action)
+        # action = get_action(action)
         obs, reward, done, info = self.env.step(action)
         obs = self.transform(obs)
         return obs, reward, done, info

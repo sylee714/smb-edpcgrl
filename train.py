@@ -109,7 +109,7 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
 
 ################################## MAIN ########################################
 game = 'smb'
-representation = 'snake'
+representation = 'up-right'
 experiment = None
 steps = 1e7
 render = False
@@ -118,7 +118,7 @@ logging = True
 # we get multiple environments and they try to read/modify the same file.
 n_cpu = 1 # number of cpu cores; this should not exceed the number cpu cores of PC
 kwargs = {
-    'resume': True
+    'resume': False
 }
 
 if __name__ == '__main__':

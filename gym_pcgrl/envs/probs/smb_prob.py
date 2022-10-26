@@ -16,7 +16,7 @@ from gym_pcgrl.envs.helper import *
 from gym_pcgrl.envs.probs.utils import *
 from collections import deque
 
-import vtp_parser
+from gym_pcgrl.envs.probs.vtp_parser import *
 
 rootpath = os.path.abspath(os.path.dirname(__file__)) + "/"
 
@@ -115,7 +115,7 @@ class SMBProblem(Problem):
         # print("End Block: ", self._end_block_num )
         # print("Last iteration: ", self._last_iteration)
 
-        self.valid_patterns = vtp_parser.parse(rootpath + "valid_tile_patterns.json")
+        self.valid_patterns = parse(rootpath + "valid_tile_patterns.json")
         
         # self.F_que = deque(maxlen=self._total_num_of_tiles)
         # self.H_que = deque(maxlen=self._total_num_of_tiles)
@@ -479,7 +479,7 @@ class SMBProblem(Problem):
         h, w = piece.shape
         for i in range(h-fh+1):
             for j in range(w-fw+1):
-                k = str(tuple((piece[i:i+fh, j:j+fw]).flatten()))
+                k = tuple((piece[i:i+fh, j:j+fw]).flatten())
                 if k in self.valid_patterns:
                     counts += 1
         return counts
@@ -506,8 +506,9 @@ class SMBProblem(Problem):
         # the map is checked if it's playable or not in the "get_stats" method
         # if the dis-win == 0 and the status == win
         # it's a playable level, give a huge positive value for playability?
-        # if new_stats["dist-win"] == 0 and new_stats["status"] == "win":
-        if True:            
+        if new_stats["dist-win"] == 0 and new_stats["status"] == "win":
+        # if True:            
+            # print("current iteration: ", self.current_iteration)
             self._cur_block_num = self.get_cur_block_num(self.current_iteration)
 
             # calculate the current x and y location based 
@@ -558,7 +559,7 @@ class SMBProblem(Problem):
 
         # if unplayable, give a huge negative value
         else:
-            print("unplayable")
+            # print("unplayable")
             reward += -100
 
         return reward 
@@ -609,7 +610,8 @@ class SMBProblem(Problem):
         return {
             "dist-win": new_stats["dist-win"],
             "status": new_stats["status"],
-            "valid_pattern_counts:": self.valid_pattern_counts,
+            "valid_pattern_counts:": self.valid_pattern_counts, 
+            "valid_pattern_reward": (self.valid_pattern_counts * 3),
             "kl_val": self.kl_val,
             "fun": self.fun,
             "his dev": self.his_dev
