@@ -28,7 +28,6 @@ def infer(game, representation, model_path, **kwargs):
     agent = PPO2.load(model_path)
     env = make_vec_envs(env_name, representation, None, 1, **kwargs)
     obs = env.reset()
-    obs = env.reset()
     dones = False
     for i in range(kwargs.get('trials', 1)):
         while not dones:
@@ -42,7 +41,7 @@ def infer(game, representation, model_path, **kwargs):
 
 ################################## MAIN ########################################
 game = 'smb'
-representation = 'snake'
+representation = 'up-right'
 model_path = 'models/{}/{}/best_model.pkl'.format(game, representation)
 kwargs = {
     'change_percentage': 0.4,

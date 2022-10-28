@@ -111,7 +111,7 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
 game = 'smb'
 representation = 'up-right'
 experiment = None
-steps = 1e7
+steps = 1e6
 render = False
 logging = True
 # for this smb and snanke, only use 1 core. Because if we use more than 1 core,
