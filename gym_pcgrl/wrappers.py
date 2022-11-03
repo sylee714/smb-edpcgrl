@@ -126,19 +126,23 @@ class ActionMap(gym.Wrapper):
         else:
             h, w = self.env.observation_space['map'].shape
             dim = self.env.observation_space['map'].high.max()
+
         self.h = self.unwrapped.h = h
         self.w = self.unwrapped.w = w
         self.dim = self.unwrapped.dim = self.env.get_num_tiles()
-       #self.action_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(h,w,dim))
-        self.action_space = gym.spaces.Discrete(h*w*self.dim)
+        #self.action_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(h,w,dim))
+        # self.action_space = gym.spaces.Discrete(h*w*self.dim)
+        self.action_space = gym.spaces.Discrete(h*28*self.dim)
 
     def reset(self):
         self.old_obs = self.env.reset()
         return self.old_obs
 
     def step(self, action):
-       #y, x, v = np.unravel_index(np.argmax(action), action.shape)
-        y, x, v = np.unravel_index(action, (self.h, self.w, self.dim))
+        #y, x, v = np.unravel_index(np.argmax(action), action.shape)
+        # y, x, v = np.unravel_index(action, (self.h, self.w, self.dim))
+        y, x, v = np.unravel_index(action, (self.h, 28, self.dim))
+      
         if 'pos' in self.old_obs:
             o_x, o_y = self.old_obs['pos']
             if o_x == x and o_y == y:
@@ -184,7 +188,7 @@ class Cropped(gym.Wrapper):
         self.observation_space.spaces[self.name] = gym.spaces.Box(low=0, high=high_value, shape=(crop_size, crop_size), dtype=np.uint8)
 
     def step(self, action):
-        action = get_action(action)
+        # action = get_action(action)
         obs, reward, done, info = self.env.step(action)
         obs = self.transform(obs)
         return obs, reward, done, info

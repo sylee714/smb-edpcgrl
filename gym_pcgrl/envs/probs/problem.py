@@ -104,7 +104,7 @@ class Problem:
     Returns:
         float: the current reward due to the change between the old map stats and the new map stats
     """
-    def get_reward(self, new_stats=None, old_stats=None, map=None, iterations=0):
+    def get_reward(self, new_stats=None, old_stats=None, map=None, iterations=0, cur_loc=None):
         raise NotImplementedError('get_reward is not implemented')
 
     """

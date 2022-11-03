@@ -29,18 +29,27 @@ class PcgrlEnv(gym.Env):
         self._prob = PROBLEMS[prob]()
         self._rep = REPRESENTATIONS[rep]()
         self._rep_stats = None
+        self._change_rate = 0.3
         self._iteration = 0
+        self._cur_block = 1
         self._changes = 0
 
-        self._max_changes = max(int(0.2 * self._prob._width * self._prob._height), 1)
-        self._max_iterations = self._max_changes * self._prob._width * self._prob._height
+        if self._prob_str == "smb":
+            # excluding the initial block
+            self._max_changes = max(int(self._change_rate * (self._prob._width - 28) * self._prob._height), 1)
+            self._max_changes_per_block = self._max_changes // 5
+        else:
+            self._max_changes = max(int(self._change_rate * self._prob._width * self._prob._height), 1)
+
+        if self._prob_str == "smb":
+            # excluding the initial block
+            self._max_iterations = self._max_changes * (self._prob._width - 28) * self._prob._height
+            self._max_iterations_per_block = self._max_iterations // 5
+        else:
+            self._max_iterations = self._max_changes * self._prob._width * self._prob._height
 
         self.seed()
         self.viewer = None
-
-        self._map_width = self._prob._width
-        self._map_height = self._prob._height
-        self._iterations = (self._map_width * self._map_height) - (self._prob.win_h * self._prob.win_w)
 
         self.action_space = self._rep.get_action_space(self._prob._width, self._prob._height, self.get_num_tiles())
         self.observation_space = self._rep.get_observation_space(self._prob._width, self._prob._height, self.get_num_tiles())
@@ -70,18 +79,25 @@ class PcgrlEnv(gym.Env):
     def reset(self):
 
         self._iteration = 0
+        self._cur_block = 1
         self._changes = 0
 
         # Initial map gets generated in Representation and it's stored in Rep
         # So, update the initial map with the generated segment
-        self._rep.reset(self._prob._width, self._prob._height, get_int_prob(self._prob._prob, self._prob.get_tile_types()), self._prob.win_w, self._prob.win_h)
+        self._rep.reset(self._prob._width, self._prob._height, 
+                        get_int_prob(self._prob._prob, 
+                        self._prob.get_tile_types()), 
+                        self._prob.win_w, self._prob.win_h)
+
+        self._prob.reset(self._rep_stats)
 
         if self._prob_str == "smb":
             self._prob.init_map(self._rep._map)
         
-        self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
-        self._prob.reset(self._rep_stats)
-
+        self._rep_stats = self._prob.get_stats(str_map=get_string_map(self._rep._map, self._prob.get_tile_types()), 
+                                                    num_map=self._rep._map,
+                                                    cur_block=self._cur_block)
+        
         observation = self._rep.get_observation()
         return observation
 
@@ -116,8 +132,18 @@ class PcgrlEnv(gym.Env):
     def adjust_param(self, **kwargs):
         if 'change_percentage' in kwargs:
             percentage = min(1, max(0, kwargs.get('change_percentage')))
-            self._max_changes = max(int(percentage * self._prob._width * self._prob._height), 1)
-        self._max_iterations = self._max_changes * self._prob._width * self._prob._height
+            if self._prob_str == "smb":
+                # excluding the initial block
+                self._max_changes = max(int(percentage * (self._prob._width - 28) * self._prob._height), 1)
+            else:
+                self._max_changes = max(int(percentage * self._prob._width * self._prob._height), 1)
+
+        if self._prob_str == "smb":
+            # excluding the initial block
+            self._max_iterations = self._max_changes * (self._prob._width - 28) * self._prob._height
+        else:
+            self._max_iterations = self._max_changes * self._prob._width * self._prob._height
+
         self._prob.adjust_param(**kwargs)
         self._rep.adjust_param(**kwargs)
         self.action_space = self._rep.get_action_space(self._prob._width, self._prob._height, self.get_num_tiles())
@@ -138,25 +164,35 @@ class PcgrlEnv(gym.Env):
     def step(self, action):
         self._iteration += 1
 
-        # self._old_stats = self._rep_stats
-        old_stats = self._rep_stats
-
-        change, x, y = self._rep.update(action)
+        #save copy of the old stats to calculate the reward
+        self._old_stats = self._rep_stats
         
+        # update the current state to the new state based on the taken action
+        change, x, y = self._rep.update(action, cur_block=self._cur_block)
+        
+        # if there is a change, get the new stats
         if change > 0:
             self._changes += change
-            self._rep_stats = self._prob.get_stats(get_string_map(self._rep._map, self._prob.get_tile_types()))
-            
-        reward = self._prob.get_reward(new_stats=self._rep_stats, old_stats=old_stats, map=self._rep._map, iterations=self._iteration)
-
+            self._rep_stats = self._prob.get_stats(str_map=get_string_map(self._rep._map, self._prob.get_tile_types()), 
+                                                    num_map=self._rep._map,
+                                                    cur_block=self._cur_block)
+        
         observation = self._rep.get_observation()
+        reward = self._prob.get_reward(new_stats=self._rep_stats, old_stats=self._old_stats)
 
-        done = self._prob.get_episode_over()
+        # move to the next block when changes >= change limit
+        self._cur_block = 1 + (self._changes // self._max_changes_per_block)
 
-        info = self._prob.get_debug_info(self._rep_stats, old_stats)
+        done = self._prob.get_episode_over(new_stats=self._rep_stats) or self._changes >= self._max_changes or self._iteration >= self._max_iterations or self._cur_block >= 6
+
+        info = self._prob.get_debug_info(self._rep_stats, self._old_stats)
         info["iterations"] = self._iteration
         info["changes"] = self._changes
-        
+        info["max_iterations"] = self._max_iterations
+        info["max_changes"] = self._max_changes
+        info["max_iterations_per_block"] = self._max_iterations_per_block
+        info["max_changes_per_block"] = self._max_changes_per_block
+
         return observation, reward, done, info
 
     """

@@ -27,8 +27,8 @@ class WideRepresentation(Representation):
         consists of the x position, y position, and the tile value
     """
     def get_action_space(self, width, height, num_tiles):
-        return spaces.MultiDiscrete([width, height, num_tiles])
-        # return spaces.MultiDiscrete([1, 1, num_tiles])
+        return spaces.MultiDiscrete([28, height, num_tiles])
+        # return spaces.MultiDiscrete([width, height, num_tiles])
 
     """
     Resets the current representation where it resets the parent and the current
@@ -41,10 +41,10 @@ class WideRepresentation(Representation):
     """
     def reset(self, width, height, prob, win_width=0, win_height=0):
         super().reset(width, height, prob)
-        self._x = self._random.randint(width)
+        self._x = self._random.randint(28)
         self._y = self._random.randint(height)
-        # self._x = self._random.integers(width)
-        # self._y = self._random.integers(height)
+        # self._x = self._random.randint(width)
+        # self._y = self._random.randint(height)
 
     """
     Get the observation space used by the wide representation
@@ -82,33 +82,14 @@ class WideRepresentation(Representation):
     Returns:
         boolean: True if the action change the map, False if nothing changed
     """
-    def update(self, action):
-        # print("Action: ", action[2])
-        # if the it's the same tile, return True -> 1; otherwise, return False -> 0
-        change = [0,1][self._map[action[1]][action[0]] != action[2]]
-        self._map[action[1]][action[0]] = action[2]
-        self._x = action[0]
+    def update(self, action, cur_block=0):
+        self._x = action[0] + (cur_block * 28)
         self._y = action[1]
+
+        change = [0,1][self._map[self._y][self._x] != action[2]]
+        self._map[self._y][self._x] = action[2]
+
         return change, action[0], action[1]
-
-    # def update(self, iterations, action):
-    #     # if the it's the same tile, return True -> 1; otherwise, return False -> 0
-    #     change = [0,1][self._map[action[1]][action[0]] != action[2]]
-    #     self._map[action[1]][action[0]] = action[2]
-    #     self._x = action[0]
-    #     self._y = action[1]
-
-    #     # if iterations >= 0 or iterations <= 999:
-    #     #     pass
-    #     # elif iterations >= 1000 or iterations <= 1999:
-    #     #     pass
-    #     # elif iterations >= 2000 or iterations <= 2999:
-    #     #     pass
-    #     # elif iterations >= 3000 or iterations <= 3999:
-    #     #     pass
-    #     # elif iterations >= 4000 or iterations <= 4999:
-    #     #     pass
-    #     return change, action[0], action[1]
 
     """
     Modify the level image with a red rectangle around the tile that is
@@ -137,7 +118,7 @@ class WideRepresentation(Representation):
         lvl_image.paste(x_graphics, ((self._x+border_size[0])*tile_size, (self._y+border_size[1])*tile_size,
                                         (self._x+border_size[0]+1)*tile_size,(self._y+border_size[1]+1)*tile_size), x_graphics)
 
-        self._iteration = self._iteration + 1
+        # self._iteration = self._iteration + 1
         # lvl_image.save("wide_rep_images/lvl_img_{}.png".format(self._iteration))
 
         return lvl_image

@@ -28,9 +28,6 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Tensorboard Logs
-runs/
-
 # Jupyter logs
 .ipynb_checkpoints/
 
@@ -39,3 +36,6 @@ runs/
 
 # Saved images
 *_rep_images
+
+# runs dir 
+runs/
