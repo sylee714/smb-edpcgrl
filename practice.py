@@ -76,6 +76,8 @@ if __name__ == '__main__':
 # Only use with Snake Rep
 env = gym.make('smb-snake-v0')
 
+# hello
+
 # Observation and action space 
 obs_space = env.observation_space
 action_space = env.action_space
