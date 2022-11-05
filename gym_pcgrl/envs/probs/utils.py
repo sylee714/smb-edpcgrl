@@ -85,50 +85,19 @@ def KLWithSlideWindow(lv, window, sx, nx, sy=14, ny=0):
     _ny = min(y // sy, ny)
     _nx = min(x // sx, nx)
 
-    # print("y: ", y)
-    # print("x: ", x)
-
-    # print("sh: ", sh)
-    # print("sw: ", sw)
-
-    # print("ny: ", ny)
-    # print("nx: ", nx)
-
-    # print("sy: ", sy)
-    # print("sx: ", sx)
-
-    # print("_ny: ", _ny)
-    # print("_nx: ", _nx)
-
     # mp0 = newly generated piece
     mp0 = lv2Map(lv[y:y+sh, x:x+sw])
     res = 0
 
-    # print("y + sh: ", y + sh)
-    # print("x + sw: ", x + sw)
-
     for i in range(_ny+1):
         for j in range(_nx+1):
             p = lv[y-sy*i:y-sy*i+sh, x-sx*j:x-sx*j+sw]
-            # print("y-sy*i: ", y-sy*i)
-            # print("y-sy*i+sh: ", y-sy*i+sh)
-            # print("x-sx*j: ", x-sx*j)
-            # print("x-sx*j+sw: ", x-sx*j+sw)
-            # val = calKLFromMap(mp0, lv2Map(p))
-            # print("mp0: ", mp0)
-            # print("p: ", lv2Map(p))
-            # print("val: ", val)
             res += calKLFromMap(mp0, lv2Map(p))
 
-    num = (_ny+1)*(_nx+1) 
-
-    # print("num: ", num)
+    num = (_ny+1)*(_nx+1)
 
     if num!= 0: res/=num
 
-    # print("res: ", res)
-
-    # print("----------------------")
     return res
 
 def saveLevelAsImage(level, path, line=0, mark={}):

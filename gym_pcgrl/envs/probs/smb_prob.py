@@ -99,7 +99,7 @@ class SMBProblem(Problem):
         self._num_of_tiles_per_block = self.win_h * self.win_w
         self._num_of_blocks = self._width // self.win_w
         self.sy, self.sx = 14, 7
-        self.ny, self.nx = 0, 3
+        self.ny, self.nx = 0, 4
 
         self._start_block_num = 1
         self._cur_block_num = 0
