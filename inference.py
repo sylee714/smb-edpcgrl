@@ -41,7 +41,7 @@ def infer(game, representation, model_path, **kwargs):
 
 ################################## MAIN ########################################
 game = 'smb'
-representation = 'exp'
+representation = 'wide'
 model_path = 'models/{}/{}/best_model.pkl'.format(game, representation)
 kwargs = {
     'change_percentage': 0.4,

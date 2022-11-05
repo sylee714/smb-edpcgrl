@@ -143,7 +143,7 @@ def main(game, representation, experiment, steps, n_cpu, render, logging, **kwar
 game = 'smb'
 representation = 'wide'
 experiment = None
-steps = 5e5
+steps = 1e8
 render = False
 logging = True
 

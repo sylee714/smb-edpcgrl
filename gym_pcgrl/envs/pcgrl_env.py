@@ -33,6 +33,7 @@ class PcgrlEnv(gym.Env):
         self._iteration = 0
         self._cur_block = 1
         self._changes = 0
+        self._heatmap = np.zeros((self._prob._height, self._prob._width))
 
         if self._prob_str == "smb":
             # excluding the initial block
@@ -53,6 +54,7 @@ class PcgrlEnv(gym.Env):
 
         self.action_space = self._rep.get_action_space(self._prob._width, self._prob._height, self.get_num_tiles())
         self.observation_space = self._rep.get_observation_space(self._prob._width, self._prob._height, self.get_num_tiles())
+        self.observation_space.spaces['heatmap'] = spaces.Box(low=0, high=self._max_changes, dtype=np.uint8, shape=(self._prob._height, self._prob._width))
 
     """
     Seeding the used random variable to get the same result. If the seed is None,
@@ -90,6 +92,7 @@ class PcgrlEnv(gym.Env):
                         self._prob.win_w, self._prob.win_h)
 
         self._prob.reset(self._rep_stats)
+        self._heatmap = np.zeros((self._prob._height, self._prob._width))
 
         if self._prob_str == "smb":
             self._prob.init_map(self._rep._map)
@@ -99,6 +102,7 @@ class PcgrlEnv(gym.Env):
                                                     cur_block=self._cur_block)
         
         observation = self._rep.get_observation()
+        observation["heatmap"] = self._heatmap.copy()
         return observation
 
     """
@@ -148,6 +152,7 @@ class PcgrlEnv(gym.Env):
         self._rep.adjust_param(**kwargs)
         self.action_space = self._rep.get_action_space(self._prob._width, self._prob._height, self.get_num_tiles())
         self.observation_space = self._rep.get_observation_space(self._prob._width, self._prob._height, self.get_num_tiles())
+        self.observation_space.spaces['heatmap'] = spaces.Box(low=0, high=self._max_changes, dtype=np.uint8, shape=(self._prob._height, self._prob._width))
 
     """
     Advance the environment using a specific action
@@ -173,11 +178,13 @@ class PcgrlEnv(gym.Env):
         # if there is a change, get the new stats
         if change > 0:
             self._changes += change
+            self._heatmap[y][x] += 1.0
             self._rep_stats = self._prob.get_stats(str_map=get_string_map(self._rep._map, self._prob.get_tile_types()), 
                                                     num_map=self._rep._map,
                                                     cur_block=self._cur_block)
         
         observation = self._rep.get_observation()
+        observation["heatmap"] = self._heatmap.copy()
         reward = self._prob.get_reward(new_stats=self._rep_stats, old_stats=self._old_stats)
 
         # move to the next block when changes >= change limit

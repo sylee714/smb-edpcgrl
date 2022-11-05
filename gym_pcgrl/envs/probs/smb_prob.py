@@ -81,7 +81,7 @@ class SMBProblem(Problem):
 
         # Need this for now to pass in to the reset method
         self._prob = {"empty":0.75, "solid":0.1, "enemy":0.01, "brick":0.04, "question":0.01, "coin":0.02, "tube": 0.02}
-        self._noise_rate = 0.5
+        self._noise_rate = 0.3
 
         # self._width = 140 # original = 114; the width does not include the left 3 cols and right 3 cols
         self._width = 168
@@ -496,7 +496,7 @@ class SMBProblem(Problem):
         self._cur_block_num = cur_block
 
         # calculate the start x of the current block
-        now_x = 0 + self.win_w * self._cur_block_num
+        now_x = self.win_w * self._cur_block_num
 
         # calculate the end x of the current block
         end_x = now_x + self.win_w
