@@ -94,7 +94,7 @@ def KLWithSlideWindow(lv, window, sx, nx, sy=14, ny=0):
             p = lv[y-sy*i:y-sy*i+sh, x-sx*j:x-sx*j+sw]
             res += calKLFromMap(mp0, lv2Map(p))
 
-    num = (_ny+1)*(_nx+1)
+    num = (_ny+1)*(_nx+1) - 1
 
     if num!= 0: res/=num
 

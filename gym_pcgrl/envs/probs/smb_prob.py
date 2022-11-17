@@ -81,7 +81,7 @@ class SMBProblem(Problem):
 
         # Need this for now to pass in to the reset method
         self._prob = {"empty":0.75, "solid":0.1, "enemy":0.01, "brick":0.04, "question":0.01, "coin":0.02, "tube": 0.02}
-        self._noise_rate = 0.3
+        self._noise_rate = 0.5
 
         # self._width = 140 # original = 114; the width does not include the left 3 cols and right 3 cols
         self._width = 168
@@ -215,30 +215,32 @@ class SMBProblem(Problem):
     
     # Converts PCGRL str map tiles to Mariopuzzle num map tiles
     def convertPCGRL_str2MP_num(self, map):
+        new_map = np.zeros([self._height, self._width], dtype = int)
         for i in range(len(map)):
             for j in range(len(map[i])):
                 if map[i][j] == "empty":
-                    map[i][j] = 2
+                    new_map[i][j] = 2
                 elif map[i][j] == "solid":
-                    map[i][j] = 1
+                    new_map[i][j] = 1
                 elif map[i][j] == "solid_above":
-                    map[i][j] = 1
+                    new_map[i][j] = 1
                 elif map[i][j] == "enemy":
-                    map[i][j] = 5
+                    new_map[i][j] = 5
                 elif map[i][j] == "brick": 
-                    map[i][j] = 0
+                    new_map[i][j] = 0
                 elif map[i][j] == "question":
-                    map[i][j] = 3
+                    new_map[i][j] = 3
                 elif map[i][j] == "coin":
-                    map[i][j] = 10
+                    new_map[i][j] = 10
                 elif map[i][j] == "top_left":
-                    map[i][j] = 6
+                    new_map[i][j] = 6
                 elif map[i][j] == "top_right":
-                    map[i][j] = 7
+                    new_map[i][j] = 7
                 elif map[i][j] == "tube_left":
-                    map[i][j] = 8
+                    new_map[i][j] = 8
                 elif map[i][j] == "tube_right":
-                    map[i][j] = 9
+                    new_map[i][j] = 9
+        return new_map
 
     # Reads the file that has completion rate after running Mario AI Framework.
     def readMarioAIResultFile(self, path):
@@ -571,6 +573,9 @@ class SMBProblem(Problem):
         # map_stats["total-tile-diff"] = total_tile_diff
         # ------ Title Locations ------
 
+        # save the map as mariopuzzle symbols
+        mp_map = self.convertPCGRL_str2MP_num(new_map)
+        saveLevelAsText(mp_map, rootpath + "mario_map")
 
         return map_stats
 
