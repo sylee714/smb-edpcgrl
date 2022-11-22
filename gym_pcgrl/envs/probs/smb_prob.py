@@ -81,7 +81,8 @@ class SMBProblem(Problem):
 
         # Need this for now to pass in to the reset method
         self._prob = {"empty":0.75, "solid":0.1, "enemy":0.01, "brick":0.04, "question":0.01, "coin":0.02, "tube": 0.02}
-        self._noise_rate = 0.5
+        # self._noise_rate = 0.5
+        self._noise_rate = 0.35
 
         # self._width = 140 # original = 114; the width does not include the left 3 cols and right 3 cols
         self._width = 168
@@ -287,6 +288,24 @@ class SMBProblem(Problem):
 
         return new_piece
 
+    def shuffle(self, piece):
+        print(piece)
+        blocks = []
+        index = 0
+        for i in range(2):
+            for j in range(4):
+                blocks.append(piece[ i * 7 : (i+1) * 7, j * 7 : (j+1) * 7 ])
+                print(blocks[index])
+                index += 1
+        num_choices = [0,1,2,3,4,5,6,7]
+        picked_nums = set()
+
+        # for i in range(8):
+        #     num = random.choice(num_choices)
+        #     if not num in picked_nums:
+
+
+
     # modify this method to initialize all the blocks
     def init_map(self, map):
 
@@ -339,6 +358,7 @@ class SMBProblem(Problem):
             # copy the intial block and add some noises
             for i in range(1, self._num_of_blocks):
                 map[:, i*28 : (i+1)*28] = self.add_noise(new_piece)[:, :]
+                self.shuffle(map[:, i*28 : (i+1)*28])
 
         # if not, mark this episode as unplayable
         else:

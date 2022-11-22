@@ -86,8 +86,9 @@ class WideRepresentation(Representation):
         self._x = action[0] + (cur_block * 28)
         self._y = action[1]
 
-        change = [0,1][self._map[self._y][self._x] != action[2]]
-        self._map[self._y][self._x] = action[2]
+        change = 1
+        # change = [0,1][self._map[self._y][self._x] != action[2]]
+        # self._map[self._y][self._x] = action[2]
 
         return change, action[0], action[1]
 
