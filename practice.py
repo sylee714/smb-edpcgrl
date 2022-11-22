@@ -94,12 +94,12 @@ t = 0
 while not done:
     action = env.action_space.sample()
     obs, reward, done, info = env.step(env.action_space.sample())
-    print("info: ", info)
-    print("reward: ", reward)
-    print("------------------------------------")
+    # print("info: ", info)
+    # print("reward: ", reward)
+    # print("------------------------------------")
     env.render('human')
-    time.sleep(0.2)
-    t+=1
+    # time.sleep(0.2)
+    # t+=1
     # if done:
     #     print("Episode {} finished after {} timesteps".format(i, t))
     #     print("-----------------------------------------------")

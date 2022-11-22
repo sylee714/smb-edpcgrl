@@ -300,9 +300,30 @@ class SMBProblem(Problem):
         num_choices = [0,1,2,3,4,5,6,7]
         picked_nums = set()
 
-        # for i in range(8):
-        #     num = random.choice(num_choices)
-        #     if not num in picked_nums:
+        chosen_blocks = []
+        for i in range(2):
+            for j in range(4):
+                num = random.choice(num_choices)
+                if not num in picked_nums:
+                    chosen_blocks.append(blocks[num])
+                    picked_nums.add(num)
+                else:
+                    j -= 1
+        
+        piece1 = np.concatenate((chosen_blocks[0], chosen_blocks[1],
+                                chosen_blocks[2], chosen_blocks[3]), axis=1)
+
+        piece2 = np.concatenate((chosen_blocks[4], chosen_blocks[5],
+                                chosen_blocks[6], chosen_blocks[7]), axis=1)
+
+        new_piece = np.concatenate((piece1, piece2), axis=0)
+
+        
+        print(new_piece)
+        print("---------------")
+
+        return new_piece
+
 
 
 
@@ -358,7 +379,8 @@ class SMBProblem(Problem):
             # copy the intial block and add some noises
             for i in range(1, self._num_of_blocks):
                 map[:, i*28 : (i+1)*28] = self.add_noise(new_piece)[:, :]
-                self.shuffle(map[:, i*28 : (i+1)*28])
+                shuffled_piece = self.shuffle(map[:, i*28 : (i+1)*28])
+                map[:, i*28 : (i+1)*28] = shuffled_piece[:, :]
 
         # if not, mark this episode as unplayable
         else:
