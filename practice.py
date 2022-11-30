@@ -75,7 +75,7 @@ if __name__ == '__main__':
 # --------------------------------
 
 # Only use with Snake Rep
-env = gym.make('smb-wide-v0')
+# env = gym.make('smb-wide-v0')
 
 # Observation and action space 
 # obs_space = env.observation_space
@@ -88,12 +88,38 @@ env = gym.make('smb-wide-v0')
 
 
 # for i in range(10):
-done = False
-obs = env.reset()
-t = 0
-while not done:
+# done = False
+# obs = env.reset()
+# t = 0
+# while not done:
+
+def saveLevelAsText(level, path):
+    # map={'X':0, 'S':1, '-':2, '?':3, 'Q':4, 'E':5,'<':6,'>':7,'[':8,']':9,'o':10,'B':11,'b':12}
+    # map2=['X','S','-', '?', 'Q', 'E','<','>','[',']','o','B','b']
+    with open(path+".txt",'w') as f:
+        for i in range(len(level)):
+            line=''
+            for j in range(len(level[0])):
+                line+=str(level[i, j])
+            f.write(line+'\n')
+
+env = gym.make('smb-wide-v0')
+for i in range(1000):
+    obs = env.reset()
     action = env.action_space.sample()
     obs, reward, done, info = env.step(env.action_space.sample())
+    print("i: ", i)
+    # print(obs['map'])
+    # r, c = obs['map'].shape
+    print(obs)
+    print(info)
+    playable = "playable"
+    if info['completion-rate'] < 1.0:
+        playable = "unplayable"
+    
+    file_path = "maps/" + playable + "/level_" + str(i)
+    saveLevelAsText(obs['map'], file_path)
+            
     # print("info: ", info)
     # print("reward: ", reward)
     # print("------------------------------------")

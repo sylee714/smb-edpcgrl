@@ -289,26 +289,32 @@ class SMBProblem(Problem):
         return new_piece
 
     def shuffle(self, piece):
-        print(piece)
+        # print(piece)
         blocks = []
         index = 0
         for i in range(2):
             for j in range(4):
                 blocks.append(piece[ i * 7 : (i+1) * 7, j * 7 : (j+1) * 7 ])
-                print(blocks[index])
+                # print(blocks[index])
                 index += 1
         num_choices = [0,1,2,3,4,5,6,7]
         picked_nums = set()
 
         chosen_blocks = []
-        for i in range(2):
-            for j in range(4):
-                num = random.choice(num_choices)
-                if not num in picked_nums:
-                    chosen_blocks.append(blocks[num])
-                    picked_nums.add(num)
-                else:
-                    j -= 1
+        i = 0
+        while i < 8:
+        # for i in range(2):
+            # for j in range(4):
+            num = random.choice(num_choices)
+            # print("num: ", num)
+            if not num in picked_nums:
+                chosen_blocks.append(blocks[num])
+                picked_nums.add(num)
+            else:
+                i -= 1
+            i += 1
+
+        # print("len of chosen blocks: ", len(chosen_blocks))
         
         piece1 = np.concatenate((chosen_blocks[0], chosen_blocks[1],
                                 chosen_blocks[2], chosen_blocks[3]), axis=1)
@@ -319,13 +325,10 @@ class SMBProblem(Problem):
         new_piece = np.concatenate((piece1, piece2), axis=0)
 
         
-        print(new_piece)
-        print("---------------")
+        # print(new_piece)
+        # print("---------------")
 
         return new_piece
-
-
-
 
     # modify this method to initialize all the blocks
     def init_map(self, map):

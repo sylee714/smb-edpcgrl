@@ -80,7 +80,8 @@ class PcgrlEnv(gym.Env):
     """
     def reset(self):
 
-        self._iteration = 0
+        # self._iteration = 0 # change it for now
+        self._iteration = self._iteration + 1
         self._cur_block = 1
         self._changes = 0
 
@@ -167,13 +168,13 @@ class PcgrlEnv(gym.Env):
         dictionary: debug information that might be useful to understand what's happening
     """
     def step(self, action):
-        self._iteration += 1
-
+        # self._iteration += 1
+        print("iter: ", self._iteration)
         #save copy of the old stats to calculate the reward
         self._old_stats = self._rep_stats
         
         # update the current state to the new state based on the taken action
-        change, x, y = self._rep.update(action, cur_block=self._cur_block)
+        change, x, y = self._rep.update(action, cur_block=self._cur_block, iter=self._iteration)
         
         # if there is a change, get the new stats
         if change > 0:

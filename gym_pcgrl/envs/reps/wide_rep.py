@@ -82,13 +82,15 @@ class WideRepresentation(Representation):
     Returns:
         boolean: True if the action change the map, False if nothing changed
     """
-    def update(self, action, cur_block=0):
+    def update(self, action, cur_block=0, iter=0):
         self._x = action[0] + (cur_block * 28)
         self._y = action[1]
 
         change = 1
         # change = [0,1][self._map[self._y][self._x] != action[2]]
         # self._map[self._y][self._x] = action[2]
+        
+        self._iteration = iter
 
         return change, action[0], action[1]
 
@@ -120,6 +122,6 @@ class WideRepresentation(Representation):
                                         (self._x+border_size[0]+1)*tile_size,(self._y+border_size[1]+1)*tile_size), x_graphics)
 
         # self._iteration = self._iteration + 1
-        # lvl_image.save("wide_rep_images/lvl_img_{}.png".format(self._iteration))
+        lvl_image.save("wide_rep_images/lvl_img_{}.png".format(self._iteration))
 
         return lvl_image
