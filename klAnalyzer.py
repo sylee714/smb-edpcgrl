@@ -96,6 +96,9 @@ history = computeHistory(blocks)
 print(mean(funs))
 print(mean(history))
 
+# save the avg fun and avg history for each file?
+# csv file: file name, avg fun, avg history
+
 
 
 
