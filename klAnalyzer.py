@@ -10,8 +10,6 @@ def readTextLevel(path):
     with open(path) as f:
         data = f.readlines()
         h, w = len(data), len(data[0])-1
-        print("h: ", h)
-        print("w: ", w)
         arr = np.empty(shape=(h,w), dtype=int)
         for i in range(h):
             for j in range(w):
@@ -80,21 +78,34 @@ unplayableDirPath = "maps/unplayable/"
 
 mapFiles = os.listdir(playableDirPath)
 
+funs = []
+historys = []
+
 # go thru every map file
-# for file in mapFiles:
-#     # read the map file
-#     lvlMap = readTextLevel(playableDirPath + mapFiles[0])
-#     # split the map into 6 blocks and convert into map tiles to be used for KL
-#     sections = splitMap(lvlMap)
+for file in mapFiles:
+    # read the map file
+    lvlMap = readTextLevel(playableDirPath + mapFiles[0])
+    # split the map into 6 blocks and convert into map tiles to be used for KL
+    blocks = splitMap(lvlMap)
+
+    # print("file: ", file)
+    # print("avg fun: ", mean(computeFun(blocks)))
+    # print("avg history: ", mean(computeHistory(blocks)))
+    funs.append(mean(computeFun(blocks)))
+    historys.append(mean(computeHistory(blocks)))
+
+print("avg fun: ", mean(funs))
+print("avg history: ", mean(historys))
+
 
 # read the map file
-lvlMap = readTextLevel(playableDirPath + mapFiles[0])
-# split the map into 6 blocks and convert into map tiles to be used for KL
-blocks = splitMap(lvlMap)
-funs = computeFun(blocks)
-history = computeHistory(blocks)
-print(mean(funs))
-print(mean(history))
+# lvlMap = readTextLevel(playableDirPath + mapFiles[0])
+# # split the map into 6 blocks and convert into map tiles to be used for KL
+# blocks = splitMap(lvlMap)
+# funs = computeFun(blocks)
+# history = computeHistory(blocks)
+# print(mean(funs))
+# print(mean(history))
 
 # save the avg fun and avg history for each file?
 # csv file: file name, avg fun, avg history
